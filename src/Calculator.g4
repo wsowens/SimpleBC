@@ -1,6 +1,6 @@
 grammar Calculator;
 
-exprList: topExpr ( ';' topExpr)* ';'? ; 
+exprList: topExpr ( ';' topExpr)* ';'? ;
 
 varDef: VAR ID '=' expr;
 
@@ -8,14 +8,14 @@ topExpr: expr
     { System.out.println("result: "+ Integer.toString($expr.i));}
 ;
 
-expr returns [int i]: 
+expr returns [int i]:
     el=expr op='*' er=expr { $i=$el.i*$er.i; }
     | el=expr op='/' er=expr { $i=$el.i/$er.i; }
     | el=expr op='+' er=expr { $i=$el.i+$er.i; }
     | el=expr op='-' er=expr { $i=$el.i-$er.i; }
     | INT { $i=Integer.parseInt($INT.text); }
-    | ID                
-    | '(' e=expr ')'    
+    | ID
+    | '(' e=expr ')'
     ;
 
 VAR: 'var';  // keyword
