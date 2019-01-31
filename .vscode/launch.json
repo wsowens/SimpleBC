@@ -5,9 +5,9 @@
 					"name": "simple-bc",
 					"type": "antlr-debug",
 					"request": "launch",
-					"input": "test/input.txt",
+					"input": "test/comment-test.txt",
 					"grammar": "src/Calculator.g4",
-					"startRule": "expr",
+					"startRule": "exprList",
 					"printParseTree": true,
 					"visualParseTree": true
 			}
