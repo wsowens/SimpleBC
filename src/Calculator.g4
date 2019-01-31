@@ -1,25 +1,33 @@
 grammar Calculator;
 
+/*parser rules */
 exprList: topExpr ( ';' topExpr)* ';'? ;
 
 varDef: VAR ID '=' expr;
 
-topExpr: expr
-    { System.out.println("result: "+ Integer.toString($expr.i));}
-;
+topExpr: 
+    comment* expr comment* { System.out.println("Result: "+ Double.toString($expr.i));} 
+    ;
 
-expr returns [int i]:
-    el=expr op='*' er=expr { $i=$el.i*$er.i; }
+expr returns [double i]:
+      el=expr op='*' er=expr { $i=$el.i*$er.i; }
     | el=expr op='/' er=expr { $i=$el.i/$er.i; }
     | el=expr op='+' er=expr { $i=$el.i+$er.i; }
     | el=expr op='-' er=expr { $i=$el.i-$er.i; }
-    | INT { $i=Integer.parseInt($INT.text); }
+    | INT { $i=Double.parseDouble($INT.text); }
     | ID
     | '(' e=expr ')'
     ;
 
-VAR: 'var';  // keyword
+comment: COMMENT;
 
+/*token definition*/
+COMMENT: [/][*](.)*?[*][/];
+/*
+Comments is defined with the lazy definition so that 
+we match the nearest * /
+*/
+VAR: 'var';  // keyword
 ID: [_A-Za-z]+;
 INT: [0-9]+ ;
 WS : [ \t\r\n]+ -> skip ;
