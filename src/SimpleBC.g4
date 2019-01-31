@@ -3,20 +3,21 @@ grammar SimpleBC;
 /*parser rules */
 exprList: topExpr ( EXPR_END topExpr)* EXPR_END? ;
 
-varDef: VAR ID '=' expr;
+varDef: VAR ID '=' arith_expr;
 
 topExpr: 
-      expr { System.out.println("Result: "+ Double.toString($expr.i));} 
+      arith_expr { System.out.println("Result: "+ Double.toString($arith_expr.i));} 
     ;
 
-expr returns [double i]:
-      el=expr op='*' er=expr { $i=$el.i*$er.i; }
-    | el=expr op='/' er=expr { $i=$el.i/$er.i; }
-    | el=expr op='+' er=expr { $i=$el.i+$er.i; }
-    | el=expr op='-' er=expr { $i=$el.i-$er.i; }
-    | INT { $i=Double.parseDouble($INT.text); }
+arith_expr returns [double i]:
+      el=arith_expr op='^' er=arith_expr { $i=Math.pow($el.i, $er.i); }
+    | el=arith_expr op='*' er=arith_expr { $i=$el.i*$er.i; }
+    | el=arith_expr op='/' er=arith_expr { $i=$el.i/$er.i; }
+    | el=arith_expr op='+' er=arith_expr { $i=$el.i+$er.i; }
+    | el=arith_expr op='-' er=arith_expr { $i=$el.i-$er.i; }
+    | FLOAT { $i=Double.parseDouble($FLOAT.text); }
     | ID
-    | '(' e=expr ')'
+    | '(' e=arith_expr ')'
     ;
 
 //comment: COMMENT;
@@ -31,6 +32,6 @@ we match the nearest * /
 
 VAR: 'var';  // keyword
 ID: [_A-Za-z]+;
-INT: [0-9]+ ;
-EXPR_END: [\n\r;];
+FLOAT: [0-9]+([.][0-9]*)?;
+EXPR_END: [(\r?\n);];
 WS : [ \t]+ -> skip ;
