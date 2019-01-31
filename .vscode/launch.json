@@ -6,7 +6,7 @@
 					"type": "antlr-debug",
 					"request": "launch",
 					"input": "test/comment-test.txt",
-					"grammar": "src/Calculator.g4",
+					"grammar": "src/SimpleBC.g4",
 					"startRule": "exprList",
 					"printParseTree": true,
 					"visualParseTree": true

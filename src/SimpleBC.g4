@@ -1,12 +1,12 @@
-grammar Calculator;
+grammar SimpleBC;
 
 /*parser rules */
-exprList: topExpr ( ';' topExpr)* ';'? ;
+exprList: topExpr ( EXPR_END topExpr)* EXPR_END? ;
 
 varDef: VAR ID '=' expr;
 
 topExpr: 
-    comment* expr comment* { System.out.println("Result: "+ Double.toString($expr.i));} 
+      expr { System.out.println("Result: "+ Double.toString($expr.i));} 
     ;
 
 expr returns [double i]:
@@ -19,15 +19,18 @@ expr returns [double i]:
     | '(' e=expr ')'
     ;
 
-comment: COMMENT;
+//comment: COMMENT;
 
 /*token definition*/
-COMMENT: [/][*](.)*?[*][/];
+COMMENT: [/][*](.)*?[*][/] -> skip;
 /*
 Comments is defined with the lazy definition so that 
 we match the nearest * /
 */
+
+
 VAR: 'var';  // keyword
 ID: [_A-Za-z]+;
 INT: [0-9]+ ;
-WS : [ \t\r\n]+ -> skip ;
+EXPR_END: [\n\r;];
+WS : [ \t]+ -> skip ;
