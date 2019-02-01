@@ -7,7 +7,14 @@ import java.util.HashMap;
     public interface Fn {
         public double execute(double arg);
     }
-    public HashMap<String, Fn> fnMap = new HashMap<String, Fn>();
+    public static HashMap<String, Fn> fnMap = new HashMap<String, Fn>();
+    static {
+        fnMap.put("sqrt", new Fn() { public double execute(double arg) { return Math.sqrt(arg); } });
+        fnMap.put("s", new Fn() { public double execute(double arg) { return Math.sin(arg); } });
+        fnMap.put("c", new Fn() { public double execute(double arg) { return Math.cos(arg); } });
+        fnMap.put("l", new Fn() { public double execute(double arg) { return Math.log(arg); } });
+        fnMap.put("e", new Fn() { public double execute(double arg) { return Math.pow(Math.E, arg); } });
+    }
 }
 
 /*parser rules */
@@ -26,13 +33,13 @@ arith_expr returns [double i]:
     | el=arith_expr op='+' er=arith_expr { $i=$el.i+$er.i; }
     | el=arith_expr op='-' er=arith_expr { $i=$el.i-$er.i; }
     | FLOAT { $i=Double.parseDouble($FLOAT.text); }
-    | ID
-    | func
+    | ID 
+    | func { $i = $func.i ;}
     | '(' e=arith_expr ')'
     ;
 
 func returns [double i]:
-     ID '(' arg=arith_expr ')' { $i=fnMap.get($ID).execute($arg.i); };
+     ID '(' arg=arith_expr ')' { $i=fnMap.get($ID.text).execute($arg.i); };
 
 /*lexer rules*/
 COMMENT: [/][*](.)*?[*][/] -> skip;
