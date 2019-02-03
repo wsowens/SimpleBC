@@ -25,7 +25,7 @@ exprList: topExpr ( EXPR_END topExpr)* EXPR_END? ;
 varDef: VAR ID '=' arith_expr;
 
 topExpr: 
-      arith_expr { System.out.println("Result: "+ Double.toString($arith_expr.i));} 
+      arith_expr { System.out.println(Double.toString($arith_expr.i));} 
     ;
 
 arith_expr returns [double i]:
