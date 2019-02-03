@@ -1,9 +1,11 @@
 grammar SimpleBC;
 @header{
 import java.util.HashMap;
+import java.util.Scanner;
 }
 
 @members{
+    public static Scanner input = new Scanner(System.in);
     public interface Fn {
         public double execute(double arg);
     }
@@ -33,13 +35,15 @@ arith_expr returns [double i]:
     | el=arith_expr op='+' er=arith_expr { $i=$el.i+$er.i; }
     | el=arith_expr op='-' er=arith_expr { $i=$el.i-$er.i; }
     | FLOAT { $i=Double.parseDouble($FLOAT.text); }
-    | ID 
     | func { $i = $func.i ;}
+    | ID 
     | '(' e=arith_expr ')'
     ;
 
 func returns [double i]:
-     ID '(' arg=arith_expr ')' { $i=fnMap.get($ID.text).execute($arg.i); };
+      'read()' { $i = input.nextDouble(); }
+    | ID '(' arg=arith_expr ')' { $i=fnMap.get($ID.text).execute($arg.i); }
+    ;
 
 /*lexer rules*/
 COMMENT: [/][*](.)*?[*][/] -> skip;
