@@ -15,9 +15,9 @@ grammar SimpleBC;
 	public interface Fn {
 		public double execute(double arg);
 	}
-	
+
 	public static HashMap<String, Fn> fnMap = new HashMap<String, Fn>();
-	
+
 	// Default functions
 	static {
 		fnMap.put("sqrt", new Fn() { public double execute(double arg) { return Math.sqrt(arg); } });
@@ -26,7 +26,7 @@ grammar SimpleBC;
 		fnMap.put("l", new Fn() { public double execute(double arg) { return Math.log(arg); } });
 		fnMap.put("e", new Fn() { public double execute(double arg) { return Math.pow(Math.E, arg); } });
 	}
-	
+
 	// Variable map
 	public static HashMap<String, Double> varMap = new HashMap<>();
 	public static Double getOrCreate(String id) {
@@ -40,7 +40,8 @@ grammar SimpleBC;
 }
 
 /* Parser rules */
-exprList: topExpr ( EXPR_END topExpr)* EXPR_END? ;
+// exprList: topExpr ( EXPR_END topExpr)* EXPR_END? ;
+exprList: (topExpr? EXPR_END)*;
 
 /* value assignments in bc return the value
 however, if you only assign the value,
@@ -79,7 +80,7 @@ func returns [double i]:
 	;
 
 /* Lexer rules */
-COMMENT: [/][*](.)*?[*][/] -> skip;
+COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
 /*
 Comments is defined with the lazy definition so that
 we match the nearest * /
@@ -88,5 +89,5 @@ we match the nearest * /
 VAR: 'var';  // keyword
 ID: [_A-Za-z]+;
 FLOAT: [-]?[0-9]*[.]?[0-9]+;
-EXPR_END: [(\r?\n);];
+EXPR_END: [(\r?\n);|EOF];
 WS : [ \t]+ -> skip ;

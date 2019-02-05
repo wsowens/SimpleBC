@@ -1,12 +1,16 @@
-!0
-!(!1)
-1 && 2
-0 || 12/2
-.5 || 1
-!0 && !0
-(12 && 1) && (0 || 1)
-!1
-0 && 3
-0 && 3
-0 || 0
-(12 && 0) || (0 && 1)
+/* hey how's it goin */
+1
+/* here are more comments,
+if you were interested*/
+
+
+
+# Hello
+2 # There
+# Ignore # this
+
+
+
+
+
+/* P.S. don't forget to floss*/
