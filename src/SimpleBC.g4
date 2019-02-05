@@ -40,7 +40,6 @@ grammar SimpleBC;
 }
 
 /* Parser rules */
-// exprList: topExpr ( EXPR_END topExpr)* EXPR_END? ;
 exprList: (topExpr? EXPR_END)*;
 
 /* value assignments in bc return the value
@@ -80,7 +79,8 @@ func returns [double i]:
 	;
 
 /* Lexer rules */
-COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
+C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
+POUND_COMMENT: [#](.)*?EXPR_END -> skip;
 /*
 Comments is defined with the lazy definition so that
 we match the nearest * /
