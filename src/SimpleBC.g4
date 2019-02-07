@@ -48,7 +48,7 @@ the statement the result is not printed */
 varDef returns [double i]: ID '=' value=arith_expr { varMap.put($ID.text, $value.i); $i=$value.i; } ;
 
 topExpr:
-      varDef { System.out.println(Double.toString($varDef.i));}
+      varDef { /* System.out.println(Double.toString($varDef.i)); */}
     | arith_expr { System.out.println(Double.toString($arith_expr.i));}
     ;
 

@@ -108,7 +108,10 @@ $RECYCLE.BIN/
 
 # End of https://www.gitignore.io/api/java,linux,macos,windows,visualstudiocode
 
-# Hiding everything, but antlr file. This may be a ad idea
+# Hiding everything, but antlr file. This may be a bad idea
 *.interp
 *.tokens
 *.java
+
+# Hiding generated test files
+test/*/*.txt
