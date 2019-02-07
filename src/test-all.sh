@@ -12,11 +12,19 @@ export CLASSPATH=".:/usr/local/lib/antlr-4.7.1-complete.jar:$CLASSPATH"
 # Default values for testing files
 top_test_directory=$'../test/'
 input_file_suffix=$'-input.bc'
+#float-aware.py script
+float_aware=$'./float-aware.py'
+# expected output (generated from bc -l)
 expected=$'expected.txt'
+# actual output from simple-bc
 actual=$'actual.txt'
+# the parse tree created by simple-bc
 tree=$'tree.txt'
+# any errors from simple-bc
 errors=$'errors.txt'
-diff=$'diff.txt'
+# the diff file comparing the outputs of actual and expected
+diff_command=$'python3 ./float-aware.py'
+diff=$'diff.floataware.txt'
 
 # Reference (non-functioning) code for running and compiling the code
 # antlr4=(java -Xmx500M -cp "/usr/local/lib/antlr-4.7.1-complete.jar:$CLASSPATH" org.antlr.v4.Tool)
@@ -25,7 +33,7 @@ diff=$'diff.txt'
 
 # The will output if the files failed or passed
 diffFiles() {
-	if diff -y $1 $2 > $3
+	if $diff_command $1 $2 > $3
 	then
 			echo "Pass: " $1
 	else
