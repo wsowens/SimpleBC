@@ -68,7 +68,7 @@ arith_expr returns [double i]:
 		| ID op='++' { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal+1); $i=oldVal; }
 		| ID op='--' { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal-1); $i=oldVal; }
 		| op='-' e=arith_expr { $i= -$e.i; }
-    | el=arith_expr op='^' er=arith_expr { $i=Math.pow($el.i, $er.i); }
+    | <assoc=right> el=arith_expr op='^' er=arith_expr { $i=Math.pow($el.i, $er.i); }
     | el=arith_expr op='*' er=arith_expr { $i=$el.i*$er.i; }
     | el=arith_expr op='/' er=arith_expr { $i=$el.i/$er.i; }
     | el=arith_expr op='%' er=arith_expr { $i=$el.i%$er.i; }
@@ -85,9 +85,9 @@ arith_expr returns [double i]:
     ;
 
 func returns [double i]:
-		'read()' { $i = input.nextDouble(); }
-	| ID '(' arg=arith_expr ')' { $i=fnMap.get($ID.text).execute($arg.i); }
-	;
+			'read()' { $i = input.nextDouble(); }
+		| ID '(' arg=arith_expr ')' { $i=fnMap.get($ID.text).execute($arg.i); }
+		;
 
 /* Lexer rules */
 C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
