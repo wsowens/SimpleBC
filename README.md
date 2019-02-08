@@ -32,7 +32,7 @@ cd src/
 
 It will output if each test Passes or Fails.
 
-Files currently not automatically tested: `read-function.bc`
+Files currently not automatically tested (need user input): `read-function.bc`, `print-function.bc`
 
 Also, the `scratchpad.bc` is configured to be the automatic test file for the VSCode debugger (press "F5").
 
