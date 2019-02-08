@@ -67,6 +67,7 @@ arith_expr returns [double i]:
 		|	op='--' ID { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal-1); $i=oldVal-1; }
 		| ID op='++' { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal+1); $i=oldVal; }
 		| ID op='--' { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal-1); $i=oldVal; }
+		| op='-' e=arith_expr { $i= -$e.i; }
     | el=arith_expr op='^' er=arith_expr { $i=Math.pow($el.i, $er.i); }
     | el=arith_expr op='*' er=arith_expr { $i=$el.i*$er.i; }
     | el=arith_expr op='/' er=arith_expr { $i=$el.i/$er.i; }
@@ -98,6 +99,6 @@ we match the nearest * /
 
 VAR: 'var';  // keyword
 ID: [_A-Za-z]+;
-FLOAT: [-]?[0-9]*[.]?[0-9]+;
+FLOAT: [0-9]*[.]?[0-9]+;
 EXPR_END: [(\r?\n);|EOF];
 WS : [ \t]+ -> skip ;
