@@ -6,8 +6,8 @@ c(1&&0)
 
 line */
 !(!(!(!(1)))) || (s(12/2))
-12%5 # TODO THIS IS BROKEN!!!
-sqrt((e(2))^2) - 12 % 5 * l(.2)
+12*5 # TODO THIS IS BROKEN!!!
+sqrt((e(2))^2) - 12 / 5 * l(.2)
 c(s(1.2/* Ignore me */ - 1))
 # 2+2 ####
 asb = c(2.2)/s(2.2)
