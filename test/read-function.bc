@@ -1,1 +1,9 @@
+read()
+# Input 1
+# Output 1
 read() + 4
+# Input 2
+# Output 6
+read() + 2^2-5
+# Input 1.1
+# Output .1
