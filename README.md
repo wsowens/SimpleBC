@@ -43,7 +43,7 @@ Each stringency level is assessed  as follows:
 - **Float-diff** executes `python3 float-diff.py [actual] [expected]`. `float-diff.py` converts each result in both inputs to the floating points before comparison.
 - **Round-diff** executes `python3 round-diff.py [actual] [expected]`. `float-diff.py` converts each result in both inputs to the floating points and rounds them before comparison.  
 
-The **Float-diff** test is used because our simple-bc stores numbers as doubles, while bc has arbitarary precision. This means that floating point errors lead to minor discrepancies. Passing the float test means that simple-bc produces the correct output, just with floating-point errors.
+The **Float-diff** test is used because our simple-bc stores numbers as doubles (which was the desirable behavior discussed in class), while bc has arbitarary precision. This means that floating point errors lead to minor discrepancies. Passing the float test means that simple-bc produces the correct output, just with floating-point errors.
 The **Round-diff** test is used becaues some of Java's math functions (e.g. sine) does not have the same accuracy as bc -l. By rounding, we can show that these actual and expected values are more or less the same.
 
 Ideally, a test will pass at all three levels. However, in practice, most tests have floating point issues. Extremely large numbers cannot be adequately represented in the Java double format, and these may cause a test to fail at all levels.
