@@ -71,7 +71,6 @@ arith_expr returns [double i]:
     | <assoc=right> el=arith_expr op='^' er=arith_expr { $i=Math.pow($el.i, $er.i); }
     | el=arith_expr op='*' er=arith_expr { $i=$el.i*$er.i; }
     | el=arith_expr op='/' er=arith_expr { $i=$el.i/$er.i; }
-    | el=arith_expr op='%' er=arith_expr { $i=$el.i%$er.i; }
     | el=arith_expr op='+' er=arith_expr { $i=$el.i+$er.i; }
     | el=arith_expr op='-' er=arith_expr { $i=$el.i-$er.i; }
 		| op='!' e=arith_expr { if ($e.i==0) { $i=1; } else { $i=0; } }
