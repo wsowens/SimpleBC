@@ -22,22 +22,37 @@ actual=$'actual.txt'
 tree=$'tree.txt'
 # any errors from simple-bc
 errors=$'errors.txt'
-# the diff file comparing the outputs of actual and expected
-diff_command=$'python3 ./float-aware.py'
-diff=$'diff.floataware.txt'
 
 # Reference (non-functioning) code for running and compiling the code
 # antlr4=(java -Xmx500M -cp "/usr/local/lib/antlr-4.7.1-complete.jar:$CLASSPATH" org.antlr.v4.Tool)
 # grun=java -Xmx500M -cp "/usr/local/lib/antlr-4.7.1-complete.jar:$CLASSPATH" org.antlr.v4.gui.TestRig
 # grun="$(java -Xmx500M -cp $CLASSPATH org.antlr.v4.gui.TestRig)"
 
+fail='\033[0;31mfail\033[0m\n'
+pass='\033[0;32mpass\033[0m\n'
+
 # The will output if the files failed or passed
 diffFiles() {
-	if $diff_command $1 $2 > $3
+    echo -ne "Diff:\t\t"
+	if diff -y  $1 $2 > ${test_dir}/diff.txt
 	then
-			echo "Pass: " $1
+			echo -ne $pass 
 	else
-			echo "Fail: " $1
+			echo -ne  $fail
+	fi
+    echo -ne "Float-diff:\t"
+	if python3 float-diff.py  $1 $2 > ${test_dir}/float-diff.txt
+	then
+			echo -ne $pass 
+	else
+			echo -ne $fail
+	fi
+    echo -ne "Round-diff:\t"
+	if python3 round-diff.py $1 $2 > ${test_dir}/round-diff.txt
+	then
+			echo -ne $pass 
+	else
+			echo -ne $fail
 	fi
 }
 
@@ -56,6 +71,8 @@ do
 	tail -n 1 "${test_dir}/temp" > "${test_dir}/${tree}"
 	rm "${test_dir}/temp"
 
-	# Compare the input files output with the output file
-	diffFiles "${test_dir}/${actual}" "${test_dir}/$expected" "${test_dir}/${diff}"
+	# Compare the input files output with the output files
+    echo -e "\033[1m$(basename $test_dir)\033[0m"
+	diffFiles "${test_dir}/${actual}" "${test_dir}/$expected" $test_dir
+    echo ""
 done

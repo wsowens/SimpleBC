@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 '''Usage:
-float-aware.py [actual] [expected] 
+float-diff.py [actual] [expected]
 '''
 import sys
 from itertools import zip_longest
