@@ -109,7 +109,6 @@ func returns [BigDecimal i]:
 
 /* Lexer rules */
 C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
-POUND_COMMENT: [#](.)*?EXPR_END -> skip;
 /*
 Comments is defined with the lazy definition so that
 we match the nearest * /
@@ -118,5 +117,8 @@ we match the nearest * /
 VAR: 'var';  // keyword
 ID: [_A-Za-z]+;
 FLOAT: [0-9]*[.]?[0-9]+;
-EXPR_END: [(\r?\n);|EOF];
+EXPR_END: LINE_END | [;] | [EOF] | P_COMMENT;
 WS : [ \t]+ -> skip ;
+
+fragment LINE_END: '\r'?'\n';
+fragment P_COMMENT: [#](.)*?LINE_END;
