@@ -1,4 +1,5 @@
 # Simple bc
+## *Now with arbitrary precision*
 
 A simplified version of bc (basic calculator) using ANTLR 4 for the Programming Language Concepts class
 
@@ -20,6 +21,23 @@ antlr4 SimpleBC.g4
 javac SimpleBC*.java
 grun SimpleBC exprList -tree ../test/scratchpad.bc
 ```
+### Note on Arbitrary Precision
+
+This version of simple-bc uses the BigDecimal class internally, instead of the double primative.
+Just like bc, the scale is controlled with an internal variable. By default, it is set to 20. The following code produces the same output in both bc -l and simple-bc:
+
+```
+> scale
+20
+> 1 / 3
+.33333333333333333333
+> scale = 3
+> scale
+3
+> 1 / 3
+0.333
+```
+
 
 ### Testing
 
@@ -43,7 +61,8 @@ Each stringency level is assessed  as follows:
 - **Float-diff** executes `python3 float-diff.py [actual] [expected]`. `float-diff.py` converts each result in both inputs to the floating points before comparison.
 - **Round-diff** executes `python3 round-diff.py [actual] [expected]`. `float-diff.py` converts each result in both inputs to the floating points and rounds them before comparison.  
 
-The **Float-diff** test is used because our simple-bc stores numbers as doubles (which was the desirable behavior discussed in class), while bc has arbitarary precision. This means that floating point errors lead to minor discrepancies. Passing the float test means that simple-bc produces the correct output, just with floating-point errors.
+The **Float-diff** test is used because our simple-bc formerly stores numbers as doubles (which was the desirable behavior discussed in class), while bc has arbitarary precision. Now, despite using arbitray precision, we still cannot achieve full parity with bc, because the core trigonometic functions of the Java Math library only take doubles, not BigDecimals. This leads to inherently less accurate values.
+
 The **Round-diff** test is used becaues some of Java's math functions (e.g. sine) does not have the same accuracy as bc -l. By rounding, we can show that these actual and expected values are more or less the same.
 
 Ideally, a test will pass at all three levels. However, in practice, most tests have floating point issues. Extremely large numbers cannot be adequately represented in the Java double format, and these may cause a test to fail at all levels.
