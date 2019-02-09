@@ -31,6 +31,9 @@ grammar SimpleBC;
     // Variable map
     public static HashMap<String, BigDecimal> varMap = new HashMap<>();
     public static BigDecimal getOrCreate(String id) {
+        if (id.equals("scale")) {
+            return new BigDecimal(scale);
+        }
         if (varMap.containsKey(id)) {
             return varMap.get(id);
         } 
