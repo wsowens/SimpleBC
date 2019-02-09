@@ -14,18 +14,18 @@ grammar SimpleBC;
 
     // Define function interface and map
     public interface Fn {
-        public double execute(double arg);
+        public BigDecimal execute(BigDecimal arg);
     }
 
     public static HashMap<String, Fn> fnMap = new HashMap<String, Fn>();
 
     // Default functions
     static {
-        fnMap.put("sqrt", new Fn() { public double execute(double arg) { return Math.sqrt(arg); } });
-        fnMap.put("s", new Fn() { public double execute(double arg) { return Math.sin(arg); } });
-        fnMap.put("c", new Fn() { public double execute(double arg) { return Math.cos(arg); } });
-        fnMap.put("l", new Fn() { public double execute(double arg) { return Math.log(arg); } });
-        fnMap.put("e", new Fn() { public double execute(double arg) { return Math.pow(Math.E, arg); } });
+        fnMap.put("sqrt", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.sqrt(arg.doubleValue())); } });
+        fnMap.put("s", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.sin(arg.doubleValue())); } });
+        fnMap.put("c", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.cos(arg.doubleValue())); } });
+        fnMap.put("l", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.log(arg.doubleValue())); } });
+        fnMap.put("e", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.exp(arg.doubleValue())); } });
     }
 
     // Variable map
@@ -33,12 +33,27 @@ grammar SimpleBC;
     public static BigDecimal getOrCreate(String id) {
         if (varMap.containsKey(id)) {
             return varMap.get(id);
-        } else {
+        } 
+        else {
             varMap.put(id, BigDecimal.ZERO);
             return BigDecimal.ZERO;
         }
     }
 
+    public static void set(String id, BigDecimal value) {
+        //check that scale is not set to negative
+        if (id.equals("scale")) {
+            if (value.compareTo(BigDecimal.ZERO) == -1) {
+                System.out.println("Cannot set scale to negative value");
+                System.exit(-1);
+            }
+            scale = value.intValue();
+        }
+        varMap.put(id, value);
+                
+    }
+    // Special variable
+    static int scale = 20;
     // Defualt variables
     static {
         varMap.put("last", BigDecimal.ZERO);
@@ -51,12 +66,12 @@ exprList: (topExpr? EXPR_END)*;
 /* value assignments in bc return the value
 however, if you only assign the value,
 the statement the result is not printed */
-varDef returns [BigDecimal i]: ID '=' arithExpr { varMap.put($ID.text, $arithExpr.i); $i=$arithExpr.i; } ;
+varDef returns [BigDecimal i]: ID '=' arithExpr { set($ID.text, $arithExpr.i); $i=$arithExpr.i; } ;
 
 topExpr:
       varDef
     | printStatment {System.out.println($printStatment.i); }
-    | arithExpr { varMap.put("last", $arithExpr.i); System.out.println($arithExpr.i); }
+    | arithExpr { set("last", $arithExpr.i); System.out.println($arithExpr.i); }
     ;
 
 printStatment returns [String i]:
@@ -70,24 +85,24 @@ arithExpr returns [BigDecimal i]:
     | ID op='--' { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.subtract(BigDecimal.ONE)); $i=oldVal; }
     | op='-' e=arithExpr { $i= $e.i.negate(); }
     | <assoc=right> el=arithExpr op='^' er=arithExpr { $i=($el.i.pow($er.i.intValue())); } // note that floating point values cannot be passed to pow... just like bc
-    | el=arithExpr op=('*'|'/') er=arithExpr { $i=($op.text.equals("*")) ? $el.i.multiply($er.i) : $el.i.divide($er.i); }
+    | el=arithExpr op=('*'|'/') er=arithExpr { $i=($op.text.equals("*")) ? $el.i.multiply($er.i) : $el.i.divide($er.i, scale, BigDecimal.ROUND_DOWN); }
     | el=arithExpr op=('+'|'-') er=arithExpr { $i=($op.text.equals("+")) ? $el.i.add($er.i) : $el.i.subtract($er.i); }
-//    | op='!' e=arithExpr { if ($e.i==0) { $i=1; } else { $i=0; } }
-//    | el=arithExpr op='&&' er=arithExpr { if ($el.i!=0&&$er.i!=0) { $i=1; } else { $i=0; } }
-//    | el=arithExpr op='||' er=arithExpr { if ($el.i!=0||$er.i!=0) { $i=1; } else { $i=0; } }
+    | op='!' e=arithExpr { if ($e.i.equals(BigDecimal.ZERO)) { $i=BigDecimal.ONE; } else { $i=BigDecimal.ZERO; } }
+    | el=arithExpr op='&&' er=arithExpr { if (!($el.i.equals(BigDecimal.ZERO))&&!($er.i.equals(BigDecimal.ZERO))) { $i=BigDecimal.ONE; } else { $i=BigDecimal.ZERO; } }
+    | el=arithExpr op='||' er=arithExpr { if (!($el.i.equals(BigDecimal.ZERO))||!($er.i.equals(BigDecimal.ZERO))) { $i=BigDecimal.ONE; } else { $i=BigDecimal.ZERO; } }
     | varDef { $i = $varDef.i;}
     | FLOAT { $i = new BigDecimal($FLOAT.text); }
     | ID { $i=getOrCreate($ID.text); }
-//    | func { $i = $func.i ;}
+    | func { $i = $func.i ;}
     | '(' e=arithExpr ')' { $i = $e.i; }
     ;
 
-/* 
-func returns [double i]:
-    'read()' { $i = input.nextDouble(); }
-    | ID '(' arg=arithExpr ')' { $i=fnMap.get($ID.text).execute($arg.i); }
+
+func returns [BigDecimal i]:
+    'read()' { $i = new BigDecimal(input.nextLine().trim()); }
+    | ID '(' arg=arithExpr ')' { $i=fnMap.get($ID.text).execute($arg.i).setScale(scale, BigDecimal.ROUND_DOWN); }
     ;
-*/
+
 
 /* Lexer rules */
 C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
