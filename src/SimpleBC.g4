@@ -4,6 +4,7 @@ grammar SimpleBC;
 @header{
     import java.util.HashMap;
     import java.util.Scanner;
+    import java.math.BigDecimal;
 }
 
 /* Global Java code */
@@ -28,19 +29,19 @@ grammar SimpleBC;
     }
 
     // Variable map
-    public static HashMap<String, Double> varMap = new HashMap<>();
-    public static Double getOrCreate(String id) {
+    public static HashMap<String, BigDecimal> varMap = new HashMap<>();
+    public static BigDecimal getOrCreate(String id) {
         if (varMap.containsKey(id)) {
             return varMap.get(id);
         } else {
-            varMap.put(id, 0.0);
-            return 0.0;
+            varMap.put(id, BigDecimal.ZERO);
+            return BigDecimal.ZERO;
         }
     }
 
     // Defualt variables
     static {
-        varMap.put("last", 0.0);
+        varMap.put("last", BigDecimal.ZERO);
     }
 }
 
@@ -50,43 +51,43 @@ exprList: (topExpr? EXPR_END)*;
 /* value assignments in bc return the value
 however, if you only assign the value,
 the statement the result is not printed */
-varDef returns [double i]: ID '=' value=arith_expr { varMap.put($ID.text, $value.i); $i=$value.i; } ;
+varDef returns [BigDecimal i]: ID '=' arithExpr { varMap.put($ID.text, $arithExpr.i); $i=$arithExpr.i; } ;
 
 topExpr:
-      varDef { }
+      varDef
     | printStatment {System.out.println($printStatment.i); }
-    | arith_expr { varMap.put("last", $arith_expr.i); System.out.println(Double.toString($arith_expr.i)); }
+    | arithExpr { varMap.put("last", $arithExpr.i); System.out.println($arithExpr.i); }
     ;
 
 printStatment returns [String i]:
-        'print' {$i = "";} ((arith_expr {$i += $arith_expr.i;} | '"' s=ID '"' {$i += $s.text;}) ',')* (arith_expr {varMap.put("last", $arith_expr.i); $i += $arith_expr.i;} | '"' s=ID '"' {$i += $s.text;})
+        'print' {$i = "";} ((arithExpr {$i += $arithExpr.i;} | '"' s=ID '"' {$i += $s.text;}) ',')* (arithExpr {varMap.put("last", $arithExpr.i); $i += $arithExpr.i;} | '"' s=ID '"' {$i += $s.text;})
         ;
 
-arith_expr returns [double i]:
-      op='++' ID { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal+1); $i=oldVal+1; }
-    | op='--' ID { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal-1); $i=oldVal-1; }
-    | ID op='++' { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal+1); $i=oldVal; }
-    | ID op='--' { double oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal-1); $i=oldVal; }
-    | op='-' e=arith_expr { $i= -$e.i; }
-    | <assoc=right> el=arith_expr op='^' er=arith_expr { $i=Math.pow($el.i, $er.i); }
-    | el=arith_expr op='*' er=arith_expr { $i=$el.i*$er.i; }
-    | el=arith_expr op='/' er=arith_expr { $i=$el.i/$er.i; }
-    | el=arith_expr op='+' er=arith_expr { $i=$el.i+$er.i; }
-    | el=arith_expr op='-' er=arith_expr { $i=$el.i-$er.i; }
-    | op='!' e=arith_expr { if ($e.i==0) { $i=1; } else { $i=0; } }
-    | el=arith_expr op='&&' er=arith_expr { if ($el.i!=0&&$er.i!=0) { $i=1; } else { $i=0; } }
-    | el=arith_expr op='||' er=arith_expr { if ($el.i!=0||$er.i!=0) { $i=1; } else { $i=0; } }
-    | var=varDef { $i=$var.i;}
-    | FLOAT { $i=Double.parseDouble($FLOAT.text); }
+arithExpr returns [BigDecimal i]:
+      op='++' ID { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.add(BigDecimal.ONE)); $i=oldVal.add(BigDecimal.ONE); }
+    | op='--' ID { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.subtract(BigDecimal.ONE)); $i=oldVal.subtract(BigDecimal.ONE); }
+    | ID op='++' { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.add(BigDecimal.ONE)); $i=oldVal; }
+    | ID op='--' { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.subtract(BigDecimal.ONE)); $i=oldVal; }
+    | op='-' e=arithExpr { $i= $e.i.negate(); }
+    | <assoc=right> el=arithExpr op='^' er=arithExpr { $i=($el.i.pow($er.i.intValue())); } // note that floating point values cannot be passed to pow... just like bc
+    | el=arithExpr op=('*'|'/') er=arithExpr { $i=($op.text.equals("*")) ? $el.i.multiply($er.i) : $el.i.divide($er.i); }
+    | el=arithExpr op=('+'|'-') er=arithExpr { $i=($op.text.equals("+")) ? $el.i.add($er.i) : $el.i.subtract($er.i); }
+//    | op='!' e=arithExpr { if ($e.i==0) { $i=1; } else { $i=0; } }
+//    | el=arithExpr op='&&' er=arithExpr { if ($el.i!=0&&$er.i!=0) { $i=1; } else { $i=0; } }
+//    | el=arithExpr op='||' er=arithExpr { if ($el.i!=0||$er.i!=0) { $i=1; } else { $i=0; } }
+    | varDef { $i = $varDef.i;}
+    | FLOAT { $i = new BigDecimal($FLOAT.text); }
     | ID { $i=getOrCreate($ID.text); }
-    | func { $i = $func.i ;}
-    | '(' e=arith_expr ')' { $i = $e.i; }
+//    | func { $i = $func.i ;}
+    | '(' e=arithExpr ')' { $i = $e.i; }
     ;
 
+/* 
 func returns [double i]:
     'read()' { $i = input.nextDouble(); }
-    | ID '(' arg=arith_expr ')' { $i=fnMap.get($ID.text).execute($arg.i); }
+    | ID '(' arg=arithExpr ')' { $i=fnMap.get($ID.text).execute($arg.i); }
     ;
+*/
 
 /* Lexer rules */
 C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
