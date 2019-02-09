@@ -23,8 +23,9 @@ grun SimpleBC exprList -tree ../test/scratchpad.bc
 ```
 ### Note on Arbitrary Precision
 
-This version of simple-bc uses the BigDecimal class internally, instead of the double primative.
-Just like bc, the scale is controlled with an internal variable. By default, it is set to 20. The following code produces the same output in both bc -l and simple-bc:
+This version of simple-bc uses the BigDecimal class internally, instead of the double primitive.
+Just like bc, the scale is controlled with an internal variable. By default, it is set to 20. 
+The following code produces the same output in both bc -l and simple-bc:
 
 ```
 > scale
