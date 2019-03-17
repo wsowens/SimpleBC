@@ -9,12 +9,12 @@ the statement the result is not printed */
 
 /*bc does not allow the defining inside statement blocks or other functions
  therefore, we outline it here it here*/
-file:
+file: 
     | (statement | define) (STATE_SEP (statement|define))*
     ;
 
 define:
-    'define' name=ID '(' (args+=ID (',' args+=ID)*)? ')' LINE_END  '{' states+=statement (STATE_SEP states+=statement)* '}' ; 
+    'define' name=ID '(' (args+=ID (COMMA args+=ID)*)? ')' ENDLINE? '{' states+=statement (STATE_SEP states+=statement)* '}' ; 
 
 statement:
     | expr   /* expressions should be printed, unless they are assignments */
@@ -23,7 +23,7 @@ statement:
     | '{' statement (STATE_SEP statement)* '}' 
     | 'if' '(' cond=expr ')' stat1=statement ('else' stat2=statement)?
     | 'while' '(' cond=expr ')' stat=statement
-    | 'for' '(' pre=expr ';' cond=expr ';' post=expr ')'
+    | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')'
     | 'break'
     | 'continue'
     | 'halt' /* end bc upon execution */
@@ -63,21 +63,20 @@ expr:
     | func
     ;
 
-list: 'print' ID PRINT_SEP ID ;
-
 func /* returns [BigDecimal i] */:
     'read()' /* { $i = new BigDecimal(input.nextLine().trim()); } */
     | ID '(' arg=expr ')' /* { $i=fnMap.get($ID.text).execute($arg.i).setScale(scale, BigDecimal.ROUND_DOWN); } */
     ;
 
-
 /* Lexer rules */
 ID: [_A-Za-z]+;
-//FLOAT: [0-9]*[.]?[0-9]+;
-PRINT_SEP: ','; 
-//STATE_SEP: (LINE_END) | ([;]) | ([;]LINE_END) ;
-//STRING: ["].*?["]; /* lazy definition of string */
-//WS : [ \t]+ -> skip ;
-//P_COMMENT: '#' (.)*? LINE_END -> skip;
-//C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
-//LINE_END: '\r'?'\n';
+PRINT_SEP: SEMI | COMMA;
+STATE_SEP: (ENDLINE) | SEMI | (SEMI ENDLINE);
+FLOAT: [0-9]*[.]?[0-9]+; 
+STRING: ["].*?["]; /* lazy definition of string */
+WS : [ \t]+ -> skip ;
+C_COMMENT: [/][*](.)*?[*][/] -> skip;
+P_COMMENT: '#' (.)*? ENDLINE -> skip;
+ENDLINE: '\r'?'\n';
+SEMI: ';';
+COMMA: ',';
