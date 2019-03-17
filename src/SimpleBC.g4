@@ -1,124 +1,83 @@
 grammar SimpleBC;
+/* This grammar was created to follow the specification provided here:
+   https://www.gnu.org/software/bc/manual/html_mono/bc.html */
 
-/* Include Java libraries */
-@header{
-    import java.util.HashMap;
-    import java.util.Scanner;
-    import java.math.BigDecimal;
-}
 
-/* Global Java code */
-@members{
-    // Input for functions
-    public static Scanner input = new Scanner(System.in);
-
-    // Define function interface and map
-    public interface Fn {
-        public BigDecimal execute(BigDecimal arg);
-    }
-
-    public static HashMap<String, Fn> fnMap = new HashMap<String, Fn>();
-
-    // Default functions
-    static {
-        fnMap.put("sqrt", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.sqrt(arg.doubleValue())); } });
-        fnMap.put("s", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.sin(arg.doubleValue())); } });
-        fnMap.put("c", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.cos(arg.doubleValue())); } });
-        fnMap.put("l", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.log(arg.doubleValue())); } });
-        fnMap.put("e", new Fn() { public BigDecimal execute(BigDecimal arg) { return new BigDecimal(Math.exp(arg.doubleValue())); } });
-    }
-
-    // Variable map
-    public static HashMap<String, BigDecimal> varMap = new HashMap<>();
-    public static BigDecimal getOrCreate(String id) {
-        if (id.equals("scale")) {
-            return new BigDecimal(scale);
-        }
-        if (varMap.containsKey(id)) {
-            return varMap.get(id);
-        } 
-        else {
-            varMap.put(id, BigDecimal.ZERO);
-            return BigDecimal.ZERO;
-        }
-    }
-
-    public static void set(String id, BigDecimal value) {
-        //check that scale is not set to negative
-        if (id.equals("scale")) {
-            if (value.compareTo(BigDecimal.ZERO) == -1) {
-                System.out.println("Cannot set scale to negative value");
-                System.exit(-1);
-            }
-            scale = value.intValue();
-        }
-        varMap.put(id, value);
-                
-    }
-    // Special variable
-    static int scale = 20;
-    // Defualt variables
-    static {
-        varMap.put("last", BigDecimal.ZERO);
-    }
-}
-
-/* Parser rules */
-exprList: (topExpr? EXPR_END)*;
-
-/* value assignments in bc return the value
+/* TODO: move this comment value assignments in bc return the value
 however, if you only assign the value,
 the statement the result is not printed */
-varDef returns [BigDecimal i]: ID '=' arithExpr { set($ID.text, $arithExpr.i); $i=$arithExpr.i; } ;
 
-topExpr:
-      varDef
-    | printStatment {System.out.println($printStatment.i); }
-    | arithExpr { set("last", $arithExpr.i); System.out.println($arithExpr.i); }
+/*bc does not allow the defining inside statement blocks or other functions
+ therefore, we outline it here it here*/
+file:
+    | (statement | define) (STATE_SEP (statement|define))*
     ;
 
-printStatment returns [String i]:
-        'print' {$i = "";} ((arithExpr {$i += $arithExpr.i;} | '"' s=ID '"' {$i += $s.text;}) ',')* (arithExpr {varMap.put("last", $arithExpr.i); $i += $arithExpr.i;} | '"' s=ID '"' {$i += $s.text;})
-        ;
+define:
+    'define' name=ID '(' (args+=ID (',' args+=ID)*)? ')' LINE_END  '{' states+=statement (STATE_SEP states+=statement)* '}' ; 
 
-arithExpr returns [BigDecimal i]:
-      op='++' ID { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.add(BigDecimal.ONE)); $i=oldVal.add(BigDecimal.ONE); }
-    | op='--' ID { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.subtract(BigDecimal.ONE)); $i=oldVal.subtract(BigDecimal.ONE); }
-    | ID op='++' { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.add(BigDecimal.ONE)); $i=oldVal; }
-    | ID op='--' { BigDecimal oldVal = getOrCreate($ID.text); varMap.put($ID.text, oldVal.subtract(BigDecimal.ONE)); $i=oldVal; }
-    | op='-' e=arithExpr { $i= $e.i.negate(); }
-    | <assoc=right> el=arithExpr op='^' er=arithExpr { $i=($el.i.pow($er.i.intValue())); } // note that floating point values cannot be passed to pow... just like bc
-    | el=arithExpr op=('*'|'/') er=arithExpr { $i=($op.text.equals("*")) ? $el.i.multiply($er.i) : $el.i.divide($er.i, scale, BigDecimal.ROUND_DOWN); }
-    | el=arithExpr op=('+'|'-') er=arithExpr { $i=($op.text.equals("+")) ? $el.i.add($er.i) : $el.i.subtract($er.i); }
-    | op='!' e=arithExpr { if ($e.i.equals(BigDecimal.ZERO)) { $i=BigDecimal.ONE; } else { $i=BigDecimal.ZERO; } }
-    | el=arithExpr op='&&' er=arithExpr { if (!($el.i.equals(BigDecimal.ZERO))&&!($er.i.equals(BigDecimal.ZERO))) { $i=BigDecimal.ONE; } else { $i=BigDecimal.ZERO; } }
-    | el=arithExpr op='||' er=arithExpr { if (!($el.i.equals(BigDecimal.ZERO))||!($er.i.equals(BigDecimal.ZERO))) { $i=BigDecimal.ONE; } else { $i=BigDecimal.ZERO; } }
-    | varDef { $i = $varDef.i;}
-    | FLOAT { $i = new BigDecimal($FLOAT.text); }
-    | ID { $i=getOrCreate($ID.text); }
-    | func { $i = $func.i ;}
-    | '(' e=arithExpr ')' { $i = $e.i; }
+statement:
+    | expr   /* expressions should be printed, unless they are assignments */
+    | STRING /* strings should be printed literally */
+    | 'print' printable (PRINT_SEP printable)* /* refine this to allow for spacew */
+    | '{' statement (STATE_SEP statement)* '}' 
+    | 'if' '(' cond=expr ')' stat1=statement ('else' stat2=statement)?
+    | 'while' '(' cond=expr ')' stat=statement
+    | 'for' '(' pre=expr ';' cond=expr ';' post=expr ')'
+    | 'break'
+    | 'continue'
+    | 'halt' /* end bc upon execution */
+    | 'return' ( value=expr )? /* if no value is provided, return 0 */
     ;
 
+printable:
+    | expr
+    | STRING
+    ;
 
-func returns [BigDecimal i]:
-    'read()' { $i = new BigDecimal(input.nextLine().trim()); }
-    | ID '(' arg=arithExpr ')' { $i=fnMap.get($ID.text).execute($arg.i).setScale(scale, BigDecimal.ROUND_DOWN); }
+expr:
+      op='++' ID
+    | op='--' ID 
+    | ID op='++' 
+    | ID op='--'
+    | op='-' e=expr
+    | <assoc=right> el=expr op='^' er=expr
+    | el=expr op=('*'|'/') er=expr
+    | el=expr op=('+'|'-') er=expr
+    | '(' e=expr ')'
+    /* assignment */
+    | ID '=' expr
+    /* relational expressions */
+    | el=expr '<'  er=expr
+    | el=expr '<=' er=expr
+    | el=expr '>'  er=expr
+    | el=expr '>=' er=expr
+    | el=expr '==' er=expr
+    | el=expr '!=' er=expr
+    /* boolean expressions */
+    | op='!' e=expr
+    | el=expr op='&&' er=expr
+    | el=expr op='||' er=expr
+    | FLOAT
+    | ID
+    | func
+    ;
+
+list: 'print' ID PRINT_SEP ID ;
+
+func /* returns [BigDecimal i] */:
+    'read()' /* { $i = new BigDecimal(input.nextLine().trim()); } */
+    | ID '(' arg=expr ')' /* { $i=fnMap.get($ID.text).execute($arg.i).setScale(scale, BigDecimal.ROUND_DOWN); } */
     ;
 
 
 /* Lexer rules */
-C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
-/*
-Comments is defined with the lazy definition so that
-we match the nearest * /
-*/
-
-VAR: 'var';  // keyword
 ID: [_A-Za-z]+;
-FLOAT: [0-9]*[.]?[0-9]+;
-EXPR_END: LINE_END | [;] | [EOF] | P_COMMENT;
-WS : [ \t]+ -> skip ;
-
-fragment LINE_END: '\r'?'\n';
-fragment P_COMMENT: [#](.)*?LINE_END;
+//FLOAT: [0-9]*[.]?[0-9]+;
+PRINT_SEP: ','; 
+//STATE_SEP: (LINE_END) | ([;]) | ([;]LINE_END) ;
+//STRING: ["].*?["]; /* lazy definition of string */
+//WS : [ \t]+ -> skip ;
+//P_COMMENT: '#' (.)*? LINE_END -> skip;
+//C_COMMENT: [/][*](.|[\r\n])*?[*][/] -> skip;
+//LINE_END: '\r'?'\n';
