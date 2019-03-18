@@ -13,7 +13,7 @@ abstract class ASTNode {
     ArrayList<ASTNode> children = new ArrayList<ASTNode>();
 
     public String toString(){
-        String str = "( " + this.getClass().getSimpleName();
+        String str = "(" + this.getClass().getSimpleName();
         for (ASTNode child : this.children) {
             str = str + " " + child;
         }
@@ -21,6 +21,53 @@ abstract class ASTNode {
     }
 
     public abstract Object visit(Env env);
+}
+
+interface Printable {
+    public Object visit(Env env, boolean doPrint);
+}
+
+class Root extends ASTNode{
+    public void add(ASTNode an) {
+        //TODO: remove this later
+        if (an != null) {
+            System.out.println("Adding: " + an);
+            children.add(an);
+        }
+        System.out.println(children.size());
+    }
+
+    public Object visit(Env env) {
+
+        for (ASTNode child : children) {
+            child.visit(env);
+        }
+        return null;
+    }
+}
+
+class Expr extends ASTNode implements Printable {
+    ExprNode child;
+    
+    Expr(ExprNode n) {
+        child = n;
+        children.add(n);
+    }
+
+    public Object visit(Env env) {
+        BigDecimal result = child.visit(env);
+        System.out.println(result);
+        return result;
+
+    }
+
+    public Object visit(Env env, boolean doPrint) {
+        BigDecimal result = child.visit(env);
+        if (doPrint)
+            System.out.println(result);
+        return result;
+    }
+
 }
 
 abstract class ExprNode extends ASTNode {
@@ -410,6 +457,118 @@ class Func extends ExprNode {
     
 }
 
+class Str extends ASTNode implements Printable {
+    String value;
+    public Str(String value) {
+        this.value = value;
+    }
+
+    public String visit(Env env) {
+        return this.visit(env, true);
+    }
+
+    public String visit(Env env, boolean doPrint) {
+        if (doPrint) {
+            System.out.print(this.value);
+        }
+        return this.value;
+    }
+
+    public String toString()
+    {
+        return "(" + this.getClass().getSimpleName() + " " + this.value + ")";
+    }
+}
+
+class Print extends ASTNode {
+    ArrayList<Printable> children = new ArrayList<Printable>();
+
+    public void add(Printable child) {
+        children.add(child);
+    }
+
+    public Object visit(Env env) {
+        for (Printable child : children)
+        {
+            System.out.print(child.visit(env, false));
+        }
+        return null;
+    }
+
+    public String toString(){
+        String str = "(" + this.getClass().getSimpleName();
+        for (Printable child : this.children) {
+            str = str + " " + child;
+        }
+        return str + ")";
+    }
+}
+
+class Block extends ASTNode {
+
+    public void add(ASTNode child) {
+        this.children.add(child);
+    }
+
+    public Object visit(Env env) {
+        for (ASTNode child : children)
+        {
+            child.visit(env);
+        }
+        return null;
+    }
+}
+
+class IfElse extends ASTNode { 
+    ExprNode cond;
+    ASTNode ifNode;
+    ASTNode elseNode;
+
+    IfElse(ExprNode cond, ASTNode ifNode) {
+        this.cond = cond;
+        this.ifNode = ifNode;
+        this.elseNode = null;
+    }
+
+    public Object visit(Env env) {
+        BigDecimal result = cond.visit(env);
+        if (result.equals(BigDecimal.ZERO))
+        {
+            if (elseNode != null) {
+               return this.elseNode.visit(env);
+            }
+            //TODO return something sensible here?
+            return BigDecimal.ZERO;
+        }
+        else {
+            return this.ifNode.visit(env);
+        }
+    }
+
+    void addElse(ASTNode elseNode) {
+        this.elseNode = elseNode;
+        this.children.add(elseNode);
+    }
+}
+
+class While extends ASTNode {
+    ExprNode cond;
+    ASTNode body;
+    While(ExprNode cond, ASTNode body) {
+        this.cond = cond;
+        this.body = body;
+        this.children.add(cond);
+        this.children.add(body);
+    }
+
+    public Object visit(Env env) {
+        while ( !(cond.visit(env).equals(BigDecimal.ZERO)) ) {
+            body.visit(env);
+        }
+        return null;
+    }
+}
+
 class Env {
     ArrayList<HashMap<String, BigDecimal>> stack = new ArrayList<HashMap<String, BigDecimal>>();
     //change this to list to contain FuncNodes
@@ -463,23 +622,25 @@ class Env {
         }
     }
 }
-    
+
 }
 
 file: 
-     (statement | define) ( ( SEMI | ENDLINE | SEMI ENDLINE ) (statement|define))*
+    { Root root = new Root(); }
+     (st=statement { root.add($st.an); }| define) ( ( SEMI | ENDLINE | SEMI ENDLINE ) ( nxt=statement { root.add($nxt.an);} | define | EOF ))* EOF?
+    { root.visit(new Env()); System.err.println(root); }
     ;
 
 define:
     'define' name=ID '(' (args+=ID (',' args+=ID)*)? ')' ENDLINE? '{' states+=statement ( ( SEMI | ENDLINE | SEMI ENDLINE ) states+=statement)* '}' ; 
 
-statement:
-      e=expr { if (!($e.en instanceof Assign)) { System.out.println($e.en.visit(new Env())); } }
-    | STRING  /* strings should be printed literally */
-    | 'print' printable ((SEMI | COMMA) printable)* /* refine this to allow for spacew */
-    | '{' statement ( ( SEMI | ENDLINE | SEMI ENDLINE ) statement)* '}' 
-    | 'if' '(' cond=expr ')' stat1=statement ('else' stat2=statement)?
-    | 'while' '(' cond=expr ')' ENDLINE? stat=statement
+statement returns [ASTNode an]:
+      e=expr   { $an= new Expr($e.en);} 
+    | s=STRING { $an= new Str($s.text);}
+    | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ((SEMI | COMMA)                   np=printable {p.add($np.pn);})*
+    | '{'     { Block b = new Block(); $an = b; } fs=statement { b.add($fs.an); } ((SEMI | ENDLINE | SEMI ENDLINE ) ns=statement {b.add($ns.an);})* '}' 
+    | 'if' '(' con=expr ')'  ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
+    | 'while' '(' cond=expr ')' ENDLINE? stat=statement { $an = new While($cond.en, $stat.an); }
     | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')'
     | 'break'
     | 'continue'
@@ -487,9 +648,9 @@ statement:
     | 'return' ( value=expr )? /* if no value is provided, return 0 */
     ;
 
-printable:
-    | expr
-    | STRING
+printable returns [Printable pn]:
+    | e=expr { $pn = new Expr($e.en); }
+    | s=STRING { $pn = new Str($s.text); }
     ;
 
 testExpr:

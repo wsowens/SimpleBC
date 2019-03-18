@@ -1,8 +1,5 @@
-print 2.4*2
-print 1,2,-3
-print 1 - 2,"hello", 12, 2*4
-last
-1
-last
-print "hello"
-last
+if (1 < 0) {
+print "hi"
+} else {
+print "yo"
+}
