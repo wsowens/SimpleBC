@@ -20,11 +20,11 @@ abstract class ASTNode {
         return str + ")";
     }
 
-    abstract Object visit(Env env);
+    abstract Object visit(Env env) throws KeywordExcept;
 }
 
 interface Printable {
-    public Object visit(Env env, boolean doPrint);
+    public Object visit(Env env, boolean doPrint) throws KeywordExcept;
 }
 
 class Root extends ASTNode{
@@ -39,7 +39,13 @@ class Root extends ASTNode{
     Object visit(Env env) {
 
         for (ASTNode child : children) {
-            child.visit(env);
+            try {
+                child.visit(env);
+            }
+            catch (KeywordExcept ex) {
+                System.err.println(ex.getMessage());
+                //TODO: should we exit?
+            }
         }
         return null;
     }
@@ -53,7 +59,7 @@ class Expr extends ASTNode implements Printable {
         children.add(n);
     }
 
-    public BigDecimal visit(Env env) {
+    public BigDecimal visit(Env env) throws KeywordExcept {
         BigDecimal result = child.visit(env);
         //System.out.println("\nVisiting: "  + child.getClass().getSimpleName());
         if ( ! (child instanceof Assign) ) {
@@ -63,7 +69,7 @@ class Expr extends ASTNode implements Printable {
 
     }
 
-    public BigDecimal visit(Env env, boolean doPrint) {
+    public BigDecimal visit(Env env, boolean doPrint) throws KeywordExcept {
         BigDecimal result = child.visit(env);
         if (doPrint)
             System.out.println(result);
@@ -493,12 +499,18 @@ class Print extends ASTNode {
 
     Object visit(Env env) {
         for (Printable child : children)
-        {
-            Object result = child.visit(env, false);
-            if (result instanceof String) {
-                result = ((String) (result)).replace("\\n", "\n");
+        {   
+            try {
+                Object result = child.visit(env, false);
+                if (result instanceof String) {
+                    result = ((String) (result)).replace("\\n", "\n");
+                }
+                System.out.print(result);
             }
-            System.out.print(result);
+            catch (KeywordExcept ex) {
+                System.err.println(ex.getMessage());
+                System.exit(-1);
+            }
         }
         return null;
     }
@@ -519,7 +531,7 @@ class Block extends ASTNode {
         this.children.add(child);
     }
 
-    Object visit(Env env) {
+    Object visit(Env env) throws KeywordExcept{
         for (ASTNode child : children)
         {
             child.visit(env);
@@ -537,9 +549,11 @@ class IfElse extends ASTNode {
         this.cond = cond;
         this.ifNode = ifNode;
         this.elseNode = null;
+        children.add(cond);
+        children.add(ifNode);
     }
 
-    Object visit(Env env) {
+    Object visit(Env env) throws KeywordExcept{
         BigDecimal result = cond.visit(env);
         if (result.equals(BigDecimal.ZERO))
         {
@@ -570,9 +584,18 @@ class While extends ASTNode {
         this.children.add(body);
     }
 
-    Object visit(Env env) {
+    Object visit(Env env) throws KeywordExcept{
         while ( !(cond.visit(env, false).equals(BigDecimal.ZERO)) ) {
-            body.visit(env);
+            try {
+                body.visit(env);
+            }
+            catch (BreakExcept ex) {
+                break;
+            }
+            catch (ContinueExcept ex) {
+                //execution has already been halted for this iteration
+                //so we can just move on along
+            }
         }
         return null;
     }
@@ -594,57 +617,94 @@ class For extends ASTNode {
         this.children.add(this.body);
     }
 
-    Object visit(Env env) {
+    Object visit(Env env) throws KeywordExcept{
         pre.visit(env, false);
-        BigDecimal result = cond.visit(env, false);
-        System.out.println("Result: " + result);
-        while ( !(result.equals(BigDecimal.ZERO)) ) {
-            body.visit(env);
+        while ( !(cond.visit(env, false).equals(BigDecimal.ZERO)) ) {
+            try {
+                body.visit(env);
+            }
+            catch (BreakExcept ex) {
+                break;
+            }
+            catch (ContinueExcept ex) {
+                //execution has already been halted for this iteration
+                //so we can just move on along
+            }
             post.visit(env);
-            result = cond.visit(env, false);
         }
         return null;
     }
+}
 
-    class Halt extends ASTNode {
-        Halt() {
-            //do nothing
-        }
 
-        Object visit(Env env) {
-            // TODO: possibly exit more gracefully?
-            System.exit(0);
-            return null;
-        }
+abstract class KeywordExcept extends Exception {
+    KeywordExcept(String keyword, String place) {
+        super("Error: " + keyword + " outside a " + place);
+    }
+}
+
+class BreakExcept extends KeywordExcept {
+    BreakExcept() { super("Break", "for/while"); }
+}
+
+class ContinueExcept extends KeywordExcept {
+    ContinueExcept() { super("Continue", "for/while"); }
+}
+
+
+class Break extends ASTNode {
+    Object visit(Env env) throws KeywordExcept {
+        throw new BreakExcept();
+    }
+}
+
+class Continue extends ASTNode {
+    Object visit(Env env) throws KeywordExcept {
+        throw new ContinueExcept();
+    }
+}
+
+
+class Halt extends ASTNode {
+    Object visit(Env env) {
+        // TODO: possibly exit more gracefully?
+        System.exit(0);
+        return null;
+    }
+}
+
+class ASTFunc {
+    ArrayList<String> args;
+    ASTNode body;
+    ASTFunc(ArrayList<String> args, ASTNode body) {
+        this.args = args;
+        this.body = body;
     }
 
-    class ASTFunc {
-        ArrayList<String> args;
-        ASTNode body;
-        ASTFunc(ArrayList<String> args, ASTNode body) {
-            this.args = args;
-            this.body = body;
+    BigDecimal call(Env env, ArrayList<BigDecimal> input_args) throws KeywordExcept {
+        if (input_args.size() != args.size() ) {
+            System.err.println("Function received " + input_args.size() + " args, expected " + input_args.size());
+            System.exit(-1);
         }
-
-        BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
-            if (input_args.size() != args.size() ) {
-                System.err.println("Function received " + input_args.size() + " args, expected " + input_args.size());
-                System.exit(-1);
-            }
-            // push new map onto the Environment stack
-            env.push();
-            for (int i = 0; i < args.size(); i++ ) {
-                String name = args.get(i);
-                BigDecimal value = input_args.get(i);
-                env.locals().put(name, value);
-            }
-            // TODO: wrap this in try catch
+        // push new map onto the Environment stack
+        env.push();
+        for (int i = 0; i < args.size(); i++ ) {
+            String name = args.get(i);
+            BigDecimal value = input_args.get(i);
+            env.locals().put(name, value);
+        }
+        // TODO: wrap this in try catch
+        try {
             this.body.visit(env);
-            //if no exception occurs, then no return value specified
-            // remove the locals from the Environment stack
-            env.pop();
-            return BigDecimal.ZERO;
         }
+        catch (KeywordExcept ex) {
+            System.err.println(ex.getMessage());
+            System.exit(-1);
+        }
+        //if no exception occurs, then no return value specified
+        // remove the locals from the Environment stack
+        env.pop();
+        return BigDecimal.ZERO;
     }
 }
 
@@ -708,7 +768,7 @@ class Env {
 file: 
     { Root root = new Root(); }
      (st=statement { root.add($st.an); }| define) ( ( SEMI | ENDLINE | SEMI ENDLINE ) ( nxt=statement { root.add($nxt.an);} | define | EOF ))* EOF?
-    { root.visit(new Env()); System.err.println(root); }
+    {  System.err.println(root); root.visit(new Env()); }
     ;
 
 define:
@@ -722,9 +782,10 @@ statement returns [ASTNode an]:
     | 'if' '(' con=expr ')'  ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
     | 'while' '(' cond=expr ')' ENDLINE? stat=statement { $an = new While($cond.en, $stat.an); }
     | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')' ENDLINE? stat=statement{ $an = new For($pre.en, $cond.en, $post.en, $stat.an); }
-    | 'break' 
-    | 'continue'
-    | 'halt' { $an = new Str("FUCK"); }/* end bc upon execution */
+    | 'break'    { $an = new Break(); }
+    | 'continue' { $an = new Continue(); }
+    | 'halt'     { $an = new Halt(); } /* end bc upon execution */
+    | 'exit'     { System.exit(0); }   /* exit bc immediately */
     | 'return' ( value=expr )? /* if no value is provided, return 0 */
     ;
 
