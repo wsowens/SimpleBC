@@ -2,27 +2,20 @@ grammar SimpleBC;
 /* This grammar was created to follow the specification provided here:
    https://www.gnu.org/software/bc/manual/html_mono/bc.html */
 
-
-/* TODO: move this comment value assignments in bc return the value
-however, if you only assign the value,
-the statement the result is not printed */
-
-/*bc does not allow the defining inside statement blocks or other functions
- therefore, we outline it here it here*/
 file: 
-    | (statement | define) (STATE_SEP (statement|define))*
+    | (statement | define) ( ( SEMI | ENDLINE | SEMI ENDLINE ) (statement|define))*
     ;
 
 define:
-    'define' name=ID '(' (args+=ID (COMMA args+=ID)*)? ')' ENDLINE? '{' states+=statement (STATE_SEP states+=statement)* '}' ; 
+    'define' name=ID '(' (args+=ID (',' args+=ID)*)? ')' ENDLINE? '{' states+=statement ( ( SEMI | ENDLINE | SEMI ENDLINE ) states+=statement)* '}' ; 
 
 statement:
     | expr   /* expressions should be printed, unless they are assignments */
     | STRING /* strings should be printed literally */
-    | 'print' printable (PRINT_SEP printable)* /* refine this to allow for spacew */
-    | '{' statement (STATE_SEP statement)* '}' 
+    | 'print' printable ((SEMI | COMMA) printable)* /* refine this to allow for spacew */
+    | '{' statement ( ( SEMI | ENDLINE | SEMI ENDLINE ) statement)* '}' 
     | 'if' '(' cond=expr ')' stat1=statement ('else' stat2=statement)?
-    | 'while' '(' cond=expr ')' stat=statement
+    | 'while' '(' cond=expr ')' ENDLINE? stat=statement
     | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')'
     | 'break'
     | 'continue'
@@ -65,13 +58,11 @@ expr:
 
 func /* returns [BigDecimal i] */:
     'read()' /* { $i = new BigDecimal(input.nextLine().trim()); } */
-    | ID '(' arg=expr ')' /* { $i=fnMap.get($ID.text).execute($arg.i).setScale(scale, BigDecimal.ROUND_DOWN); } */
+    | ID '(' (args+=expr (',' args+=expr)*)?  ')' /* { $i=fnMap.get($ID.text).execute($arg.i).setScale(scale, BigDecimal.ROUND_DOWN); } */
     ;
 
 /* Lexer rules */
 ID: [_A-Za-z]+;
-PRINT_SEP: SEMI | COMMA;
-STATE_SEP: (ENDLINE) | SEMI | (SEMI ENDLINE);
 FLOAT: [0-9]*[.]?[0-9]+; 
 STRING: ["].*?["]; /* lazy definition of string */
 WS : [ \t]+ -> skip ;

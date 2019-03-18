@@ -1,4 +1,4 @@
-# Simple bc
+# Simple BC
 ## *Now with arbitrary precision*
 
 A simplified version of bc (basic calculator) using ANTLR 4 for the Programming Language Concepts class
@@ -81,6 +81,11 @@ This folder contains the following:
 Files currently not automatically tested (need user input): `read-function.bc`, `print-function.bc`
 
 Also, the `scratchpad.bc` is configured to be the automatic test file for the VSCode debugger (press "F5").
+
+## Features
+The 'pseudostatements' outlined [here](https://www.gnu.org/software/bc/manual/html_mono/bc.html#TOC16) were omitted.
+Though 'quit' seems useful, it only makes sense in interactive mode.
+(See 'halt'.)
 
 ## License
 
