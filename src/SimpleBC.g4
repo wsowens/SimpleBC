@@ -20,7 +20,7 @@ abstract class ASTNode {
         return str + ")";
     }
 
-    public abstract Object visit(Env env);
+    abstract Object visit(Env env);
 }
 
 interface Printable {
@@ -28,16 +28,15 @@ interface Printable {
 }
 
 class Root extends ASTNode{
-    public void add(ASTNode an) {
+    void add(ASTNode an) {
         //TODO: remove this later
         if (an != null) {
             System.out.println("Adding: " + an);
             children.add(an);
         }
-        System.out.println(children.size());
     }
 
-    public Object visit(Env env) {
+    Object visit(Env env) {
 
         for (ASTNode child : children) {
             child.visit(env);
@@ -54,14 +53,17 @@ class Expr extends ASTNode implements Printable {
         children.add(n);
     }
 
-    public Object visit(Env env) {
+    public BigDecimal visit(Env env) {
         BigDecimal result = child.visit(env);
-        System.out.println(result);
+        //System.out.println("\nVisiting: "  + child.getClass().getSimpleName());
+        if ( ! (child instanceof Assign) ) {
+            System.out.println(result);
+        }
         return result;
 
     }
 
-    public Object visit(Env env, boolean doPrint) {
+    public BigDecimal visit(Env env, boolean doPrint) {
         BigDecimal result = child.visit(env);
         if (doPrint)
             System.out.println(result);
@@ -71,12 +73,12 @@ class Expr extends ASTNode implements Printable {
 }
 
 abstract class ExprNode extends ASTNode {
-    public abstract BigDecimal visit(Env env);
+    abstract BigDecimal visit(Env env);
 }
 
 abstract class UnaryExpr extends ExprNode {
     ExprNode child;
-    public UnaryExpr( ExprNode child) {
+    UnaryExpr( ExprNode child) {
         this.child = child;
         this.children.add(child);
     }
@@ -85,7 +87,7 @@ abstract class UnaryExpr extends ExprNode {
 abstract class BinaryExpr extends ExprNode {
     ExprNode left;
     ExprNode right;
-    public BinaryExpr(ExprNode left, ExprNode right) {
+    BinaryExpr(ExprNode left, ExprNode right) {
         this.left = left;
         this.right = right;
         this.children.add(left);
@@ -96,11 +98,11 @@ abstract class BinaryExpr extends ExprNode {
 
 class PreInc extends ExprNode {
     String id;
-    public PreInc(String id) {
+    PreInc(String id) {
         this.id = id;
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         //TODO: do the proper memory manipulation
         return BigDecimal.ONE;
@@ -113,11 +115,11 @@ class PreInc extends ExprNode {
 
 class PreDec extends ExprNode {
     String id;
-    public PreDec(String id) {
+    PreDec(String id) {
         this.id = id;
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         //TODO: do the proper memory manipulation
         return BigDecimal.ONE;
@@ -130,11 +132,11 @@ class PreDec extends ExprNode {
 
 class PostInc extends ExprNode {
     String id;
-    public PostInc(String id) {
+    PostInc(String id) {
         this.id = id;
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         //TODO: do the proper memory manipulation
         return BigDecimal.ONE;
@@ -147,11 +149,11 @@ class PostInc extends ExprNode {
 
 class PostDec extends ExprNode {
     String id;
-    public PostDec(String id) {
+    PostDec(String id) {
         this.id = id;
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         //TODO: do the proper memory manipulation
         return BigDecimal.ONE;
@@ -163,43 +165,43 @@ class PostDec extends ExprNode {
 }
 
 class Negate extends UnaryExpr {
-    public Negate(ExprNode child) {
+    Negate(ExprNode child) {
         super(child);
     }
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         return this.child.visit(env).negate();
     }
 }
 
 class Power extends BinaryExpr {
-    public Power(ExprNode left, ExprNode right) {
+    Power(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         return this.left.visit(env).pow(this.right.visit(env).intValue());
     }
 }
 
 class Mul extends BinaryExpr {
-    public Mul(ExprNode left, ExprNode right) {
+    Mul(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         return this.left.visit(env).multiply(this.right.visit(env));
     }
 }
 
 class Div extends BinaryExpr {
-    public Div(ExprNode left, ExprNode right) {
+    Div(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         //TODO: change this later
         return this.left.visit(env).divide(this.right.visit(env), 20, BigDecimal.ROUND_DOWN);
@@ -207,22 +209,22 @@ class Div extends BinaryExpr {
 }
 
 class Add extends BinaryExpr {
-    public Add(ExprNode left, ExprNode right) {
+    Add(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         return this.left.visit(env).add(this.right.visit(env));
     }
 }
 
 class Sub extends BinaryExpr {
-    public Sub(ExprNode left, ExprNode right) {
+    Sub(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         return this.left.visit(env).subtract(this.right.visit(env));
     }
@@ -231,12 +233,12 @@ class Sub extends BinaryExpr {
 class Assign extends ExprNode {
     String id;
     ExprNode child;
-    public Assign(String id, ExprNode child) {
+    Assign(String id, ExprNode child) {
         this.id = id;
         this.child = child;
     }
 
-    public BigDecimal visit(Env env) {
+    BigDecimal visit(Env env) {
         BigDecimal value = child.visit(env);
         env.locals().put(id, value);
         return value;
@@ -248,11 +250,11 @@ class Assign extends ExprNode {
 }
 
 class Lt extends BinaryExpr {
-    public Lt(ExprNode left, ExprNode right) {
+    Lt(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
         if (result == -1) { 
@@ -265,11 +267,11 @@ class Lt extends BinaryExpr {
 }
 
 class Le extends BinaryExpr {
-    public Le(ExprNode left, ExprNode right) {
+    Le(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
         if (result == -1 || result == 0) { 
@@ -282,11 +284,11 @@ class Le extends BinaryExpr {
 }
 
 class Gt extends BinaryExpr {
-    public Gt(ExprNode left, ExprNode right) {
+    Gt(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
         if (result == 1) { 
@@ -299,11 +301,11 @@ class Gt extends BinaryExpr {
 }
 
 class Ge extends BinaryExpr {
-    public Ge(ExprNode left, ExprNode right) {
+    Ge(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
         if (result == 1 || result == 0) { 
@@ -316,11 +318,11 @@ class Ge extends BinaryExpr {
 }
 
 class Eq extends BinaryExpr {
-    public Eq(ExprNode left, ExprNode right) {
+    Eq(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
         if ( result == 0) { 
@@ -333,11 +335,11 @@ class Eq extends BinaryExpr {
 }
 
 class NotEq extends BinaryExpr {
-    public NotEq(ExprNode left, ExprNode right) {
+    NotEq(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
         if ( result != 0) { 
@@ -351,11 +353,11 @@ class NotEq extends BinaryExpr {
 
 
 class Not extends UnaryExpr {
-    public Not(ExprNode child) {
+    Not(ExprNode child) {
         super(child);
     }
         
-    public BigDecimal visit(Env env) {
+    BigDecimal visit(Env env) {
         if (this.child.visit(env).equals(BigDecimal.ZERO)) { 
             return BigDecimal.ONE; 
         } 
@@ -366,11 +368,11 @@ class Not extends UnaryExpr {
 }
 
 class And extends BinaryExpr {
-    public And(ExprNode left, ExprNode right) {
+    And(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         if (!(left.visit(env).equals(BigDecimal.ZERO)) && !(right.visit(env).equals(BigDecimal.ZERO))) { 
             return BigDecimal.ONE;
@@ -382,11 +384,11 @@ class And extends BinaryExpr {
 }
 
 class Or extends BinaryExpr {
-    public Or(ExprNode left, ExprNode right) {
+    Or(ExprNode left, ExprNode right) {
         super(left, right);
     }
 
-    public BigDecimal visit(Env env)
+    BigDecimal visit(Env env)
     {
         if (!(left.visit(env).equals(BigDecimal.ZERO)) || !(right.visit(env).equals(BigDecimal.ZERO))) { 
             return BigDecimal.ONE;
@@ -400,12 +402,12 @@ class Or extends BinaryExpr {
 class Var extends ExprNode {
     String id;
 
-    public Var(String id) {
+    Var(String id) {
         
         this.id = id;
     }
 
-    public BigDecimal visit(Env env) {
+    BigDecimal visit(Env env) {
         if (env.locals().containsKey(id)) {
             return env.locals().get(id);
         }
@@ -425,12 +427,12 @@ class Var extends ExprNode {
 class Const extends ExprNode {
     BigDecimal value;
 
-    public Const(BigDecimal value) {
+    Const(BigDecimal value) {
         
         this.value = value;
     }
 
-    public BigDecimal visit(Env env) {
+    BigDecimal visit(Env env) {
         return this.value;
     }
 
@@ -444,13 +446,13 @@ class Const extends ExprNode {
 class Func extends ExprNode {
     String func;
     ArrayList<ExprNode> args = new ArrayList<ExprNode>();
-    public Func(String name, ArrayList args) {
+    Func(String name, ArrayList args) {
         func = name;
         this.args = args;
         this.children = args;
     }
 
-    public BigDecimal visit(Env env) {
+    BigDecimal visit(Env env) {
         //TODO: actually handle getting the function
         return BigDecimal.ZERO;
     }
@@ -459,11 +461,13 @@ class Func extends ExprNode {
 
 class Str extends ASTNode implements Printable {
     String value;
-    public Str(String value) {
-        this.value = value;
+    Str(String value) {
+        //removing any leading or trailing quotes
+        //quotes are forbidden from being in the body of strings, so this is valid
+        this.value = value.replace("\"", "");
     }
 
-    public String visit(Env env) {
+    String visit(Env env) {
         return this.visit(env, true);
     }
 
@@ -483,14 +487,18 @@ class Str extends ASTNode implements Printable {
 class Print extends ASTNode {
     ArrayList<Printable> children = new ArrayList<Printable>();
 
-    public void add(Printable child) {
+    void add(Printable child) {
         children.add(child);
     }
 
-    public Object visit(Env env) {
+    Object visit(Env env) {
         for (Printable child : children)
         {
-            System.out.print(child.visit(env, false));
+            Object result = child.visit(env, false);
+            if (result instanceof String) {
+                result = ((String) (result)).replace("\\n", "\n");
+            }
+            System.out.print(result);
         }
         return null;
     }
@@ -506,11 +514,12 @@ class Print extends ASTNode {
 
 class Block extends ASTNode {
 
-    public void add(ASTNode child) {
+    void add(ASTNode child) {
+        //System.out.println("\nVisiting: "  + child.getClass().getSimpleName());
         this.children.add(child);
     }
 
-    public Object visit(Env env) {
+    Object visit(Env env) {
         for (ASTNode child : children)
         {
             child.visit(env);
@@ -530,7 +539,7 @@ class IfElse extends ASTNode {
         this.elseNode = null;
     }
 
-    public Object visit(Env env) {
+    Object visit(Env env) {
         BigDecimal result = cond.visit(env);
         if (result.equals(BigDecimal.ZERO))
         {
@@ -552,20 +561,90 @@ class IfElse extends ASTNode {
 }
 
 class While extends ASTNode {
-    ExprNode cond;
+    Expr cond;
     ASTNode body;
     While(ExprNode cond, ASTNode body) {
-        this.cond = cond;
+        this.cond = new Expr(cond);
         this.body = body;
-        this.children.add(cond);
+        this.children.add(this.cond);
         this.children.add(body);
     }
 
-    public Object visit(Env env) {
-        while ( !(cond.visit(env).equals(BigDecimal.ZERO)) ) {
+    Object visit(Env env) {
+        while ( !(cond.visit(env, false).equals(BigDecimal.ZERO)) ) {
             body.visit(env);
         }
         return null;
+    }
+}
+
+class For extends ASTNode {
+    Expr pre;
+    Expr cond;
+    Expr post;
+    ASTNode body;
+    For(ExprNode pre, ExprNode cond, ExprNode post, ASTNode body) {
+        this.pre = new Expr(pre);
+        this.cond = new Expr(cond);
+        this.post = new Expr(post);
+        this.body = body;
+        this.children.add(this.pre);
+        this.children.add(this.cond);
+        this.children.add(this.post);
+        this.children.add(this.body);
+    }
+
+    Object visit(Env env) {
+        pre.visit(env, false);
+        BigDecimal result = cond.visit(env, false);
+        System.out.println("Result: " + result);
+        while ( !(result.equals(BigDecimal.ZERO)) ) {
+            body.visit(env);
+            post.visit(env);
+            result = cond.visit(env, false);
+        }
+        return null;
+    }
+
+    class Halt extends ASTNode {
+        Halt() {
+            //do nothing
+        }
+
+        Object visit(Env env) {
+            // TODO: possibly exit more gracefully?
+            System.exit(0);
+            return null;
+        }
+    }
+
+    class ASTFunc {
+        ArrayList<String> args;
+        ASTNode body;
+        ASTFunc(ArrayList<String> args, ASTNode body) {
+            this.args = args;
+            this.body = body;
+        }
+
+        BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+            if (input_args.size() != args.size() ) {
+                System.err.println("Function received " + input_args.size() + " args, expected " + input_args.size());
+                System.exit(-1);
+            }
+            // push new map onto the Environment stack
+            env.push();
+            for (int i = 0; i < args.size(); i++ ) {
+                String name = args.get(i);
+                BigDecimal value = input_args.get(i);
+                env.locals().put(name, value);
+            }
+            // TODO: wrap this in try catch
+            this.body.visit(env);
+            //if no exception occurs, then no return value specified
+            // remove the locals from the Environment stack
+            env.pop();
+            return BigDecimal.ZERO;
+        }
     }
 }
 
@@ -573,7 +652,7 @@ class Env {
     ArrayList<HashMap<String, BigDecimal>> stack = new ArrayList<HashMap<String, BigDecimal>>();
     //change this to list to contain FuncNodes
     HashMap<String, ExprNode> functions = new HashMap<String, ExprNode>();
-    public Env() {
+    Env() {
         this.push();
     }
 
@@ -585,22 +664,22 @@ class Env {
         return stack.get(0);
     }
 
-    public void pop() {
+    void pop() {
         stack.remove(stack.size()-1);
     }
 
-    public void push() {
+    void push() {
         stack.add(new HashMap<String, BigDecimal>());
     }
 
-    boolean hasID(String id) {
+    boolean hasVar(String id) {
         if (locals().containsKey(id)) {
             return true;
         }
         return globals().containsKey(id);
     }
 
-    BigDecimal getID(String id) {
+    BigDecimal getVar(String id) {
         if (locals().containsKey(id)) {
             return locals().get(id);
         }
@@ -611,14 +690,15 @@ class Env {
         return BigDecimal.ZERO;
     }
 
-    void putID(String id, BigDecimal value)
+    void putVar(String id, BigDecimal value)
     {
-        //check if it's a global variable first
-        if (globals().containsKey(id)) {
-           globals().put(id, value);
+        //check if it's a local variable first
+        if (locals().containsKey(id)) {
+           locals().put(id, value);
         }
+        //other
         else {
-            locals().put(id, value);
+            globals().put(id, value);
         }
     }
 }
@@ -637,14 +717,14 @@ define:
 statement returns [ASTNode an]:
       e=expr   { $an= new Expr($e.en);} 
     | s=STRING { $an= new Str($s.text);}
-    | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ((SEMI | COMMA)                   np=printable {p.add($np.pn);})*
+    | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ( COMMA                   np=printable {p.add($np.pn);})*
     | '{'     { Block b = new Block(); $an = b; } fs=statement { b.add($fs.an); } ((SEMI | ENDLINE | SEMI ENDLINE ) ns=statement {b.add($ns.an);})* '}' 
     | 'if' '(' con=expr ')'  ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
     | 'while' '(' cond=expr ')' ENDLINE? stat=statement { $an = new While($cond.en, $stat.an); }
-    | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')'
-    | 'break'
+    | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')' ENDLINE? stat=statement{ $an = new For($pre.en, $cond.en, $post.en, $stat.an); }
+    | 'break' 
     | 'continue'
-    | 'halt' /* end bc upon execution */
+    | 'halt' { $an = new Str("FUCK"); }/* end bc upon execution */
     | 'return' ( value=expr )? /* if no value is provided, return 0 */
     ;
 
