@@ -710,8 +710,8 @@ class ASTFunc {
 
 class Env {
     ArrayList<HashMap<String, BigDecimal>> stack = new ArrayList<HashMap<String, BigDecimal>>();
-    //change this to list to contain FuncNodes
-    HashMap<String, ExprNode> functions = new HashMap<String, ExprNode>();
+    
+    HashMap<String, ASTFunc> functions = new HashMap<String, ASTFunc>();
     Env() {
         this.push();
     }
@@ -761,18 +761,22 @@ class Env {
             globals().put(id, value);
         }
     }
+
+    void putFunc() {
+
+    }
 }
 
 }
 
 file: 
-    { Root root = new Root(); }
-     (st=statement { root.add($st.an); }| define) ( ( SEMI | ENDLINE | SEMI ENDLINE ) ( nxt=statement { root.add($nxt.an);} | define | EOF ))* EOF?
-    {  System.err.println(root); root.visit(new Env()); }
+    { Root root = new Root(); Env env = new Env(); }
+     (st=statement { root.add($st.an); }| define ) ( ( SEMI | ENDLINE | SEMI ENDLINE ) ( nxt=statement { root.add($nxt.an);} | define | EOF ))* EOF?
+    {  System.err.println(root); root.visit(env); }
     ;
 
 define:
-    'define' name=ID '(' (args+=ID (',' args+=ID)*)? ')' ENDLINE? '{' states+=statement ( ( SEMI | ENDLINE | SEMI ENDLINE ) states+=statement)* '}' ; 
+    'define' name=ID {ArrayList<String> args = new ArrayList<String>(); }'(' (fa=ID {args.add($fa.text);} (',' na+=ID {args.add($na.text)})*)? ')' ENDLINE? { Block body = new Block(); } '{' fs=statement {body.add($ns.an);} ( ( SEMI | ENDLINE | SEMI ENDLINE ) fn+=statement {body.add($ns.an);})* '}' ; 
 
 statement returns [ASTNode an]:
       e=expr   { $an= new Expr($e.en);} 
