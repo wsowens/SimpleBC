@@ -31,13 +31,12 @@ class Root extends ASTNode{
     void add(ASTNode an) {
         //TODO: remove this later
         if (an != null) {
-            System.out.println("Adding: " + an);
+            System.err.println("Adding: " + an);
             children.add(an);
         }
     }
 
     Object visit(Env env) {
-
         for (ASTNode child : children) {
             try {
                 child.visit(env);
@@ -110,8 +109,9 @@ class PreInc extends ExprNode {
 
     BigDecimal visit(Env env)
     {
-        //TODO: do the proper memory manipulation
-        return BigDecimal.ONE;
+        BigDecimal current = env.getVar(id);
+        env.putVar(id, current.add(BigDecimal.ONE));
+        return current.add(BigDecimal.ONE);
     }
 
     public String toString() {
@@ -124,11 +124,11 @@ class PreDec extends ExprNode {
     PreDec(String id) {
         this.id = id;
     }
-
     BigDecimal visit(Env env)
     {
-        //TODO: do the proper memory manipulation
-        return BigDecimal.ONE;
+        BigDecimal current = env.getVar(id);
+        env.putVar(id, current.subtract(BigDecimal.ONE));
+        return current.subtract(BigDecimal.ONE);
     }
 
     public String toString() {
@@ -144,8 +144,9 @@ class PostInc extends ExprNode {
 
     BigDecimal visit(Env env)
     {
-        //TODO: do the proper memory manipulation
-        return BigDecimal.ONE;
+        BigDecimal current = env.getVar(id);
+        env.putVar(id, current.add(BigDecimal.ONE));
+        return current;
     }
 
     public String toString() {
@@ -161,8 +162,9 @@ class PostDec extends ExprNode {
 
     BigDecimal visit(Env env)
     {
-        //TODO: do the proper memory manipulation
-        return BigDecimal.ONE;
+        BigDecimal current = env.getVar(id);
+        env.putVar(id, current.subtract(BigDecimal.ONE));
+        return current;
     }
 
     public String toString() {
@@ -184,7 +186,6 @@ class Power extends BinaryExpr {
     Power(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         return this.left.visit(env).pow(this.right.visit(env).intValue());
@@ -195,7 +196,6 @@ class Mul extends BinaryExpr {
     Mul(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         return this.left.visit(env).multiply(this.right.visit(env));
@@ -206,7 +206,6 @@ class Div extends BinaryExpr {
     Div(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         //TODO: change this later
@@ -218,7 +217,6 @@ class Add extends BinaryExpr {
     Add(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         return this.left.visit(env).add(this.right.visit(env));
@@ -243,13 +241,11 @@ class Assign extends ExprNode {
         this.id = id;
         this.child = child;
     }
-
     BigDecimal visit(Env env) {
         BigDecimal value = child.visit(env);
         env.locals().put(id, value);
         return value;
     }
-
     public String toString() {
         return "(" + this.getClass().getSimpleName() + " " + this.id + " " + this.child + ")";
     }
@@ -293,7 +289,6 @@ class Gt extends BinaryExpr {
     Gt(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
@@ -310,7 +305,6 @@ class Ge extends BinaryExpr {
     Ge(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
@@ -327,7 +321,6 @@ class Eq extends BinaryExpr {
     Eq(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
@@ -344,7 +337,6 @@ class NotEq extends BinaryExpr {
     NotEq(ExprNode left, ExprNode right) {
         super(left, right);
     }
-
     BigDecimal visit(Env env)
     {
         int result = left.visit(env).compareTo(right.visit(env));
@@ -362,7 +354,6 @@ class Not extends UnaryExpr {
     Not(ExprNode child) {
         super(child);
     }
-        
     BigDecimal visit(Env env) {
         if (this.child.visit(env).equals(BigDecimal.ZERO)) { 
             return BigDecimal.ONE; 
@@ -455,14 +446,11 @@ class Func extends ExprNode {
     Func(String name, ArrayList<ExprNode> args) {
         this.name = name;
         this.args = args;
-        for (ASTNode arg : args) {
-            children.add(arg);
-        }
     }
 
     BigDecimal visit(Env env) {
         if (!env.hasFunc(name)) {
-            System.err.print("Function " + name + " not defined.");
+            System.err.println("Function " + name + " not defined.");
             System.exit(-1);
             return null;
         }
@@ -475,7 +463,14 @@ class Func extends ExprNode {
             return func.call(env, inputs);
         }
     }
-    
+
+    public String toString() {
+        String str = "(Func<" + name + ">";
+        for (ASTNode arg : this.args) {
+            str = str + " " + arg;
+        }
+        return str + ")";
+    }
 }
 
 class Str extends ASTNode implements Printable {
@@ -714,6 +709,7 @@ class ASTFunc {
         this.name = name;
         this.args = args;
         this.body = body;
+        System.err.println(body);
     }
 
     BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
@@ -817,23 +813,26 @@ class Env {
 
 file: 
     { Root root = new Root(); Env env = new Env(); }
-    (st=statement { root.add($st.an); }| def=define { env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE ) ( nxt=statement { root.add($nxt.an);} | define { env.putFunc($def.f); } | EOF ))* EOF?
+    ( st=statement { root.add($st.an); } | def=define { env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE )+ ( nxt=statement { root.add($nxt.an);} | define { env.putFunc($def.f);} | EOF ))* EOF?
     {  System.err.println(root); root.visit(env); }
     ;
 
 define returns [ASTFunc f]:
-    {ArrayList<String> args = new ArrayList<String>(); }
-    'define' name=ID '(' (fa=ID {args.add($fa.text);} (',' na=ID {args.add($na.text);})*)? ')' ENDLINE? 
-    { Block body = new Block(); } 
-    '{' ENDLINE? (fs=statement {body.add($fs.an);} ( ( SEMI | ENDLINE | SEMI ENDLINE ) fn=statement {body.add($fn.an);})*)? ENDLINE? '}' 
-    { $f = new ASTFunc($name.text, args, body); }  ; 
+    'define' name=ID  args=arglist ENDLINE? bl=block 
+    { $f = new ASTFunc($name.text, $args.args, $bl.bl); } 
+    ; 
+
+arglist returns [ArrayList<String> args]:
+     { ArrayList<String> lst = new ArrayList<String>(); $args = lst;}
+    '(' (first=ID {lst.add($first.text);} (',' next=ID { lst.add($next.text); })* )? ')'
+    ;
 
 statement returns [ASTNode an]:
       e=expr   { $an= new Expr($e.en);} 
     | s=STRING { $an= new Str($s.text);}
     | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ( COMMA                   np=printable {p.add($np.pn);})*
-    | '{'     { Block b = new Block(); $an = b; } ( fs=statement { b.add($fs.an); }  ((SEMI | ENDLINE | SEMI ENDLINE ) ns=statement {b.add($ns.an);})*)? '}' 
-    | 'if' '(' con=expr ')'  ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
+    | bl=block { $an = $bl.bl; }
+    | 'if' '(' con=expr ')'  ENDLINE? ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
     | 'while' '(' cond=expr ')' ENDLINE? stat=statement { $an = new While($cond.en, $stat.an); }
     | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')' ENDLINE? stat=statement{ $an = new For($pre.en, $cond.en, $post.en, $stat.an); }
     | 'break'    { $an = new Break(); }
@@ -841,6 +840,11 @@ statement returns [ASTNode an]:
     | 'halt'     { $an = new Halt(); } /* end bc upon execution */
     | 'exit'     { System.exit(0); }   /* exit bc immediately */
     | 'return'   { ExprNode value = new Const(BigDecimal.ZERO); } ( value=expr {value = $value.en;})? { $an = new Return(value) ;} /* if no value is provided, return 0 */
+    ;
+
+block returns [Block bl]:
+    { Block b = new Block(); $bl = b; } 
+    '{' (SEMI | ENDLINE | SEMI ENDLINE )* ( fs=statement { b.add($fs.an); }  ((SEMI | ENDLINE | SEMI ENDLINE )* ns=statement {b.add($ns.an);}) *)? (SEMI | ENDLINE | SEMI ENDLINE )* '}' 
     ;
 
 printable returns [Printable pn]:
@@ -861,7 +865,6 @@ expr returns [ExprNode en]:
     | <assoc=right> el=expr op='^' er=expr { $en = new Power($el.en, $er.en); }
     | el=expr op=('*'|'/') er=expr { $en=($op.text.equals("*")) ? new Mul($el.en, $er.en) : new Div($el.en, $er.en); }
     | el=expr op=('+'|'-') er=expr { $en=($op.text.equals("+")) ? new Add($el.en, $er.en) : new Sub($el.en, $er.en); }
-    | '(' e=expr ')' { $en = $e.en; } 
     /* assignment */
     | ID '=' e=expr { $en = new Assign($ID.text, $e.en); }
     /* relational expressions */
@@ -872,17 +875,17 @@ expr returns [ExprNode en]:
     | el=expr '==' er=expr { $en = new Eq($el.en, $er.en); }
     | el=expr '!=' er=expr { $en = new NotEq($el.en, $er.en); }
     /* boolean expressions */
-    | op='!' e=expr { $en = new Not($e.en); }
+    | '!' expr { $en = new Not($expr.en); }
     | el=expr op='&&' er=expr { $en = new And($el.en, $er.en); }
     | el=expr op='||' er=expr { $en = new Or($el.en, $er.en); }
     | FLOAT { $en = new Const(new BigDecimal($FLOAT.text)); }
+    | func  { $en = $func.en; }
     | ID    { $en = new Var($ID.text); }
-    | ID '(' { ArrayList<ExprNode> args = new ArrayList<ExprNode>(); $en = new Func($ID.text, args);} (arg=expr  {args.add($arg.en); } (',' next=expr {args.add($next.en); System.out.println("Test!");})*)?  // not working
+    | '(' e=expr ')' { $en = $e.en; } 
     ;
 
 func returns [ExprNode en] :
-    //'read()'  { $i = new BigDecimal(input.nextLine().trim()); }  worry about this later }
-    
+    ID '(' { ArrayList<ExprNode> args = new ArrayList<ExprNode>(); $en = new Func($ID.text, args);} (arg=expr  {args.add($arg.en); } (',' next=expr {args.add($next.en); })*)? ')'
     ;
 
 /* Lexer rules */
