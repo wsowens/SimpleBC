@@ -1,5 +1,16 @@
-if (1 < 0) {
-print "hi"
-} else {
-print "yo"
-}
+a
+abc
+iajdw124124
+a_a
+a_12
+a = 12
+a
+b = a
+b
+a = -12.2
+a
+b
+c = 12 - 1.2
+(a=5) + 8
+a
+(a=1)

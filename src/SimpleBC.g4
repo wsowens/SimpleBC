@@ -31,7 +31,7 @@ class Root extends ASTNode{
     void add(ASTNode an) {
         //TODO: remove this later
         if (an != null) {
-            System.err.println("Adding: " + an);
+            //System.err.println("Adding: " + an);
             children.add(an);
         }
     }
@@ -709,12 +709,11 @@ class ASTFunc {
         this.name = name;
         this.args = args;
         this.body = body;
-        System.err.println(body);
     }
 
-    BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+    public BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
         if (input_args.size() != args.size() ) {
-            System.err.println("Function received " + input_args.size() + " args, expected " + input_args.size());
+            System.err.println("Function received " + input_args.size() + " args, expected " + args.size());
             System.exit(-1);
         }
         // push new map onto the Environment stack
@@ -742,12 +741,86 @@ class ASTFunc {
     }
 }
 
+class Sqrt extends ASTFunc {
+    Sqrt() {
+        super("sqrt", null, null);
+    }
+
+    public BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+        if (input_args.size() != 1 ) {
+            System.err.println("Function received " + input_args.size() + " args, expected " + 1);
+            System.exit(-1);
+        }
+        return new BigDecimal(Math.sqrt(input_args.get(0).doubleValue()));
+    }
+}
+
+class Sfunc extends ASTFunc {
+    Sfunc() {
+        super("s", null, null);
+    }
+
+    public BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+        if (input_args.size() != 1 ) {
+            System.err.println("Function received " + input_args.size() + " args, expected " + 1);
+            System.exit(-1);
+        }
+        return new BigDecimal(Math.sin(input_args.get(0).doubleValue()));
+    }
+}
+
+class Cfunc extends ASTFunc {
+    Cfunc() {
+        super("c", null, null);
+    }
+
+    public BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+        if (input_args.size() != 1 ) {
+            System.err.println("Function received " + input_args.size() + " args, expected " + 1);
+            System.exit(-1);
+        }
+         return new BigDecimal(Math.cos(input_args.get(0).doubleValue()));
+    }
+}
+class Lfunc extends ASTFunc {
+    Lfunc() {
+        super("l", null, null);
+    }
+
+    public BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+        if (input_args.size() != 1 ) {
+            System.err.println("Function received " + input_args.size() + " args, expected " + 1);
+            System.exit(-1);
+        }
+         return  new BigDecimal(Math.log(input_args.get(0).doubleValue()));
+    }
+}
+
+class Efunc extends ASTFunc {
+    Efunc() {
+        super("e", null, null);
+    }
+
+    public BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+        if (input_args.size() != 1 ) {
+            System.err.println("Function received " + input_args.size() + " args, expected " + 1);
+            System.exit(-1);
+        }
+         return new BigDecimal(Math.exp(input_args.get(0).doubleValue())); 
+    }
+}
+
 class Env {
     ArrayList<HashMap<String, BigDecimal>> stack = new ArrayList<HashMap<String, BigDecimal>>();
     
     HashMap<String, ASTFunc> functions = new HashMap<String, ASTFunc>();
     Env() {
         this.push();
+        putFunc(new Sqrt());
+        putFunc(new Sfunc());
+        putFunc(new Cfunc());
+        putFunc(new Lfunc());
+        putFunc(new Efunc());
     }
 
     HashMap<String, BigDecimal> locals() {
