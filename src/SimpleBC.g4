@@ -450,17 +450,30 @@ class Const extends ExprNode {
 
 
 class Func extends ExprNode {
-    String func;
+    String name;
     ArrayList<ExprNode> args = new ArrayList<ExprNode>();
-    Func(String name, ArrayList args) {
-        func = name;
+    Func(String name, ArrayList<ExprNode> args) {
+        this.name = name;
         this.args = args;
-        this.children = args;
+        for (ASTNode arg : args) {
+            children.add(arg);
+        }
     }
 
     BigDecimal visit(Env env) {
-        //TODO: actually handle getting the function
-        return BigDecimal.ZERO;
+        if (!env.hasFunc(name)) {
+            System.err.print("Function " + name + " not defined.");
+            System.exit(-1);
+            return null;
+        }
+        else {
+            ASTFunc func = env.getFunc(name);
+            ArrayList<BigDecimal> inputs = new ArrayList<BigDecimal>();
+            for (ExprNode arg : args) {
+                inputs.add(arg.visit(env));
+            }
+            return func.call(env, inputs);
+        }
     }
     
 }
@@ -527,8 +540,8 @@ class Print extends ASTNode {
 class Block extends ASTNode {
 
     void add(ASTNode child) {
-        //System.out.println("\nVisiting: "  + child.getClass().getSimpleName());
-        this.children.add(child);
+        if (child != null) 
+            this.children.add(child);
     }
 
     Object visit(Env env) throws KeywordExcept{
@@ -639,16 +652,24 @@ class For extends ASTNode {
 
 abstract class KeywordExcept extends Exception {
     KeywordExcept(String keyword, String place) {
-        super("Error: " + keyword + " outside a " + place);
+        super("Error: " + keyword + " outside " + place);
     }
 }
 
 class BreakExcept extends KeywordExcept {
-    BreakExcept() { super("Break", "for/while"); }
+    BreakExcept() { super("Break", "a for/while"); }
 }
 
 class ContinueExcept extends KeywordExcept {
-    ContinueExcept() { super("Continue", "for/while"); }
+    ContinueExcept() { super("Continue", "a for/while"); }
+}
+
+class ReturnExcept extends KeywordExcept {
+    BigDecimal retval;
+    ReturnExcept(BigDecimal value) {
+        super("Return", "of a function.");
+        retval = value;
+    }
 }
 
 
@@ -664,6 +685,18 @@ class Continue extends ASTNode {
     }
 }
 
+class Return extends ASTNode {
+    ExprNode child;
+    Return(ExprNode child) {
+        this.child = child;
+        children.add(child);
+    }
+
+    Object visit(Env env) throws KeywordExcept {
+        throw new ReturnExcept(child.visit(env));
+    }
+}
+
 
 class Halt extends ASTNode {
     Object visit(Env env) {
@@ -674,14 +707,16 @@ class Halt extends ASTNode {
 }
 
 class ASTFunc {
+    String name;
     ArrayList<String> args;
     ASTNode body;
-    ASTFunc(ArrayList<String> args, ASTNode body) {
+    ASTFunc(String name, ArrayList<String> args, ASTNode body) {
+        this.name = name;
         this.args = args;
         this.body = body;
     }
 
-    BigDecimal call(Env env, ArrayList<BigDecimal> input_args) throws KeywordExcept {
+    BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
         if (input_args.size() != args.size() ) {
             System.err.println("Function received " + input_args.size() + " args, expected " + input_args.size());
             System.exit(-1);
@@ -693,9 +728,12 @@ class ASTFunc {
             BigDecimal value = input_args.get(i);
             env.locals().put(name, value);
         }
-        // TODO: wrap this in try catch
+        BigDecimal retval = BigDecimal.ZERO;
         try {
             this.body.visit(env);
+        }
+        catch (ReturnExcept ex) {
+            retval = ex.retval;
         }
         catch (KeywordExcept ex) {
             System.err.println(ex.getMessage());
@@ -704,7 +742,7 @@ class ASTFunc {
         //if no exception occurs, then no return value specified
         // remove the locals from the Environment stack
         env.pop();
-        return BigDecimal.ZERO;
+        return retval;
     }
 }
 
@@ -762,8 +800,16 @@ class Env {
         }
     }
 
-    void putFunc() {
+    boolean hasFunc(String name) {
+        return functions.containsKey(name);
+    }
 
+    void putFunc(ASTFunc func) {
+        functions.put(func.name, func);
+    }
+
+    ASTFunc getFunc(String name) {
+        return functions.get(name);
     }
 }
 
@@ -771,18 +817,22 @@ class Env {
 
 file: 
     { Root root = new Root(); Env env = new Env(); }
-     (st=statement { root.add($st.an); }| define ) ( ( SEMI | ENDLINE | SEMI ENDLINE ) ( nxt=statement { root.add($nxt.an);} | define | EOF ))* EOF?
+    (st=statement { root.add($st.an); }| def=define { env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE ) ( nxt=statement { root.add($nxt.an);} | define { env.putFunc($def.f); } | EOF ))* EOF?
     {  System.err.println(root); root.visit(env); }
     ;
 
-define:
-    'define' name=ID {ArrayList<String> args = new ArrayList<String>(); }'(' (fa=ID {args.add($fa.text);} (',' na+=ID {args.add($na.text)})*)? ')' ENDLINE? { Block body = new Block(); } '{' fs=statement {body.add($ns.an);} ( ( SEMI | ENDLINE | SEMI ENDLINE ) fn+=statement {body.add($ns.an);})* '}' ; 
+define returns [ASTFunc f]:
+    {ArrayList<String> args = new ArrayList<String>(); }
+    'define' name=ID '(' (fa=ID {args.add($fa.text);} (',' na=ID {args.add($na.text);})*)? ')' ENDLINE? 
+    { Block body = new Block(); } 
+    '{' ENDLINE? (fs=statement {body.add($fs.an);} ( ( SEMI | ENDLINE | SEMI ENDLINE ) fn=statement {body.add($fn.an);})*)? ENDLINE? '}' 
+    { $f = new ASTFunc($name.text, args, body); }  ; 
 
 statement returns [ASTNode an]:
       e=expr   { $an= new Expr($e.en);} 
     | s=STRING { $an= new Str($s.text);}
     | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ( COMMA                   np=printable {p.add($np.pn);})*
-    | '{'     { Block b = new Block(); $an = b; } fs=statement { b.add($fs.an); } ((SEMI | ENDLINE | SEMI ENDLINE ) ns=statement {b.add($ns.an);})* '}' 
+    | '{'     { Block b = new Block(); $an = b; } ( fs=statement { b.add($fs.an); }  ((SEMI | ENDLINE | SEMI ENDLINE ) ns=statement {b.add($ns.an);})*)? '}' 
     | 'if' '(' con=expr ')'  ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
     | 'while' '(' cond=expr ')' ENDLINE? stat=statement { $an = new While($cond.en, $stat.an); }
     | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')' ENDLINE? stat=statement{ $an = new For($pre.en, $cond.en, $post.en, $stat.an); }
@@ -790,7 +840,7 @@ statement returns [ASTNode an]:
     | 'continue' { $an = new Continue(); }
     | 'halt'     { $an = new Halt(); } /* end bc upon execution */
     | 'exit'     { System.exit(0); }   /* exit bc immediately */
-    | 'return' ( value=expr )? /* if no value is provided, return 0 */
+    | 'return'   { ExprNode value = new Const(BigDecimal.ZERO); } ( value=expr {value = $value.en;})? { $an = new Return(value) ;} /* if no value is provided, return 0 */
     ;
 
 printable returns [Printable pn]:
