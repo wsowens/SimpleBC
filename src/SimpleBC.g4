@@ -502,7 +502,9 @@ class Print extends ASTNode {
     ArrayList<Printable> children = new ArrayList<Printable>();
 
     void add(Printable child) {
-        children.add(child);
+        if (child != null) {
+            children.add(child);
+        }
     }
 
     Object visit(Env env) {
@@ -638,7 +640,7 @@ class For extends ASTNode {
                 //execution has already been halted for this iteration
                 //so we can just move on along
             }
-            post.visit(env);
+            post.visit(env, false);
         }
         return null;
     }
@@ -903,7 +905,7 @@ arglist returns [ArrayList<String> args]:
 statement returns [ASTNode an]:
       e=expr   { $an= new Expr($e.en);} 
     | s=STRING { $an= new Str($s.text);}
-    | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ( COMMA                   np=printable {p.add($np.pn);})*
+    | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ( COMMA np=printable {p.add($np.pn);})*
     | bl=block { $an = $bl.bl; }
     | 'if' '(' con=expr ')'  ENDLINE? ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
     | 'while' '(' cond=expr ')' ENDLINE? stat=statement { $an = new While($cond.en, $stat.an); }
@@ -921,7 +923,7 @@ block returns [Block bl]:
     ;
 
 printable returns [Printable pn]:
-    | e=expr { $pn = new Expr($e.en); }
+      e=expr { $pn = new Expr($e.en); }
     | s=STRING { $pn = new Str($s.text); }
     ;
 
