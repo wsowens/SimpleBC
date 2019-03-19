@@ -64,7 +64,7 @@ do
 	# run the test file through bc, make output the expected
 	bc -l < $file > "${test_dir}/$expected"	
 	# running the generated + compiled parser on each test file
-	java -Xmx500M -cp $CLASSPATH org.antlr.v4.gui.TestRig SimpleBC exprList -tree $file > "${test_dir}/temp" 2> "${test_dir}/$errors"
+	java -Xmx500M -cp $CLASSPATH org.antlr.v4.gui.TestRig SimpleBC file -tree $file > "${test_dir}/temp" 2> "${test_dir}/$errors"
 	
 	# separating the tree from the main expression
 	head -n-1 "${test_dir}/temp" > "${test_dir}/${actual}"
