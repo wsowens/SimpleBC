@@ -1,0 +1,5 @@
+define meme(x) { x ^ 3 }
+for (i = 0; i < 10; i++) {
+print "hi\n"
+}
+meme(3) + meme(meme(3)) - meme(3)

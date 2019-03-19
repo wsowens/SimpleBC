@@ -59,19 +59,18 @@ class Expr extends ASTNode implements Printable {
     }
 
     public BigDecimal visit(Env env) throws KeywordExcept {
-        BigDecimal result = child.visit(env);
-        //System.out.println("\nVisiting: "  + child.getClass().getSimpleName());
-        if ( ! (child instanceof Assign) ) {
-            System.out.println(result);
-        }
-        return result;
-
+        return visit(env, true);
     }
 
     public BigDecimal visit(Env env, boolean doPrint) throws KeywordExcept {
         BigDecimal result = child.visit(env);
-        if (doPrint)
-            System.out.println(result);
+        if (doPrint) { 
+            if ( ! (child instanceof Assign) ) {
+                env.globals().put("last", result);
+                System.out.println(result);
+            }
+        }
+        //System.out.println("\nVisiting: "  + child.getClass().getSimpleName());
         return result;
     }
 
@@ -888,7 +887,7 @@ class Env {
 
 file: 
     { Root root = new Root(); Env env = new Env(); }
-    ( st=statement { root.add($st.an); } | def=define { env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE )+ ( nxt=statement { root.add($nxt.an);} | define { env.putFunc($def.f);} | EOF ))* EOF?
+    ( st=statement { root.add($st.an); } | def=define { env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )+ ( nxt=statement { root.add($nxt.an);} | define { env.putFunc($def.f);} | EOF ))* EOF?
     {  System.err.println(root); root.visit(env); }
     ;
 

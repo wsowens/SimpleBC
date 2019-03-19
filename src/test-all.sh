@@ -30,7 +30,7 @@ errors=$'errors.txt'
 
 fail='\033[0;31mfail\033[0m\n'
 pass='\033[0;32mpass\033[0m\n'
-
+abort='\033[0;33mabort\033[0m\n'
 # The will output if the files failed or passed
 diffFiles() {
     echo -ne "Diff:\t\t"
@@ -41,18 +41,28 @@ diffFiles() {
 			echo -ne  $fail
 	fi
     echo -ne "Float-diff:\t"
-	if python3 float-diff.py  $1 $2 > ${test_dir}/float-diff.txt
+	python3 float-diff.py $1 $2 > ${test_dir}/float-diff.txt
+	result=$?
+	if [ $result -eq 0 ] 
 	then
-			echo -ne $pass 
-	else
+			echo -ne $pass
+	elif [ $result -eq 1 ] 
+	then
 			echo -ne $fail
+	else
+			echo -ne $abort
 	fi
-    echo -ne "Round-diff:\t"
-	if python3 round-diff.py $1 $2 > ${test_dir}/round-diff.txt
+	echo -ne "Round-diff:\t"
+	python3 round-diff.py $1 $2 > ${test_dir}/round-diff.txt
+	result=$?
+	if [ $result -eq 0 ] 
 	then
-			echo -ne $pass 
-	else
+			echo -ne $pass
+	elif [ $result -eq 1 ] 
+	then
 			echo -ne $fail
+	else
+			echo -ne $abort
 	fi
 }
 

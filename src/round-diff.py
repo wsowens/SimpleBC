@@ -20,8 +20,13 @@ with open(actual_filename) as actual, open(expected_filename) as expected:
     not_empty = lambda x: len(x) > 0
     # read the handle, split on newline, and get a list of floats
     get_list = lambda x: list(map(float, filter(not_empty, (x.read().split("\n")))))
-    actual = get_list(actual)
-    expected = get_list(expected)
+    try:
+        actual = get_list(actual)
+        expected = get_list(expected)
+    except:
+        # abort due to inability to parse some lines
+        print("(aborted)")
+        exit(2)
 
     # iterate over each pair
     for act, exp in zip_longest(actual, expected):
