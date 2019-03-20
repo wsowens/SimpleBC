@@ -882,7 +882,7 @@ class Env {
 
 file: 
     { Root root = new Root(); Env env = new Env(); }
-    ( st=statement { root.add($st.an); } | def=define {  env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )+ ( ndef=define { env.putFunc($ndef.f); } | nxt=statement { root.add($nxt.an);} | EOF ))* EOF?
+    ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )* ( st=statement { root.add($st.an); } | def=define {  env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )+ ( ndef=define { env.putFunc($ndef.f); } | nxt=statement { root.add($nxt.an);} | EOF ))* EOF?
     {  System.err.println(root); root.visit(env); }
     ;
 

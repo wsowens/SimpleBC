@@ -1,0 +1,15 @@
+/* composition */
+define outer(x) {
+    return middle(x) * middle(x)
+}
+
+define middle(x) {
+    return inner(x) ^ inner(x)
+}
+
+define inner(x) {
+    return x + 7
+}
+
+x = 3
+outer(x + inner(x))
