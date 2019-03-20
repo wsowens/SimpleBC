@@ -1,5 +1,0 @@
-if (1 < 0) {
-print "hi"
-} else {
-print "yo"
-}

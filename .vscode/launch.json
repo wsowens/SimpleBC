@@ -1,13 +1,14 @@
 {
 	"version": "2.0.0",
 	"configurations": [
+
 			{
 					"name": "simple-bc",
 					"type": "antlr-debug",
 					"request": "launch",
 					"input": "test/scratchpad.bc",
 					"grammar": "src/SimpleBC.g4",
-					"startRule": "exprList",
+					"startRule": "file",
 					"printParseTree": true,
 					"visualParseTree": true
 			}

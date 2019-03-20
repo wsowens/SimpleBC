@@ -7,11 +7,11 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 }
 
-
+/* classes used for constructing and evaluating the AST */
 @members {
+/* abstract class for all nodes in the tree */
 abstract class ASTNode {
     ArrayList<ASTNode> children = new ArrayList<ASTNode>();
-
     public String toString(){
         String str = "(" + this.getClass().getSimpleName();
         for (ASTNode child : this.children) {
@@ -19,17 +19,17 @@ abstract class ASTNode {
         }
         return str + ")";
     }
-
     abstract Object visit(Env env) throws KeywordExcept;
 }
 
+/* interface for nodes to be passed as 'print' arguments */
 interface Printable {
     public Object visit(Env env, boolean doPrint) throws KeywordExcept;
 }
 
+/* root of the tree */
 class Root extends ASTNode{
     void add(ASTNode an) {
-        //TODO: remove this later
         if (an != null) {
             //System.err.println("Adding: " + an);
             children.add(an);
@@ -43,41 +43,43 @@ class Root extends ASTNode{
             }
             catch (KeywordExcept ex) {
                 System.err.println(ex.getMessage());
-                //TODO: should we exit?
             }
         }
         return null;
     }
 }
 
+/* top expression for all ExprNodes */
 class Expr extends ASTNode implements Printable {
     ExprNode child;
-    
     Expr(ExprNode n) {
         child = n;
         children.add(n);
     }
 
     public BigDecimal visit(Env env) throws KeywordExcept {
+        /* recursively visit each child */
         return visit(env, true);
     }
 
     public BigDecimal visit(Env env, boolean doPrint) throws KeywordExcept {
         BigDecimal result = child.visit(env);
+        /* if printing is enabled, print the result*/
         if (doPrint) { 
+            /* ...unless that result was an assign statement */
             if ( ! (child instanceof Assign) ) {
                 env.globals().put("last", result);
                 System.out.println(result);
             }
         }
-        //System.out.println("\nVisiting: "  + child.getClass().getSimpleName());
         return result;
     }
-
 }
 
+/* abstract class for ExprNodes*/
 abstract class ExprNode extends ASTNode {
     abstract BigDecimal visit(Env env);
+    /* abstract ExprNode optimize(); */
 }
 
 abstract class UnaryExpr extends ExprNode {
@@ -97,9 +99,9 @@ abstract class BinaryExpr extends ExprNode {
         this.children.add(left);
         this.children.add(right);
     }
-    
 }
 
+/* post/pre increment/decrement classes */
 class PreInc extends ExprNode {
     String id;
     PreInc(String id) {
@@ -175,6 +177,7 @@ class Negate extends UnaryExpr {
     Negate(ExprNode child) {
         super(child);
     }
+
     BigDecimal visit(Env env)
     {
         return this.child.visit(env).negate();
@@ -207,8 +210,7 @@ class Div extends BinaryExpr {
     }
     BigDecimal visit(Env env)
     {
-        //TODO: change this later
-        return this.left.visit(env).divide(this.right.visit(env), 20, BigDecimal.ROUND_DOWN);
+        return this.left.visit(env).divide(this.right.visit(env), env.scale, BigDecimal.ROUND_DOWN);
     }
 }
 
@@ -250,6 +252,7 @@ class Assign extends ExprNode {
     }
 }
 
+/* relational operators */
 class Lt extends BinaryExpr {
     Lt(ExprNode left, ExprNode right) {
         super(left, right);
@@ -348,7 +351,7 @@ class NotEq extends BinaryExpr {
     }
 }
 
-
+/* logical operators */
 class Not extends UnaryExpr {
     Not(ExprNode child) {
         super(child);
@@ -395,6 +398,7 @@ class Or extends BinaryExpr {
     }
 }
 
+/* handling variable access */
 class Var extends ExprNode {
     String id;
 
@@ -413,7 +417,7 @@ class Var extends ExprNode {
 
 }
 
-
+/* node for constants */
 class Const extends ExprNode {
     BigDecimal value;
 
@@ -432,10 +436,12 @@ class Const extends ExprNode {
     }
 }
 
-
+/* node for calling functions */
 class Func extends ExprNode {
     String name;
+    /* a list of expressions provided to the function */
     ArrayList<ExprNode> args = new ArrayList<ExprNode>();
+
     Func(String name, ArrayList<ExprNode> args) {
         this.name = name;
         this.args = args;
@@ -443,16 +449,20 @@ class Func extends ExprNode {
 
     BigDecimal visit(Env env) {
         if (!env.hasFunc(name)) {
+            /* if the function name is not defined, exit immediately */
             System.err.println("Function " + name + " not defined.");
             System.exit(-1);
             return null;
         }
         else {
+            // retrieve the function
             ASTFunc func = env.getFunc(name);
+            // evaluate the args
             ArrayList<BigDecimal> inputs = new ArrayList<BigDecimal>();
             for (ExprNode arg : args) {
                 inputs.add(arg.visit(env));
             }
+            // make a call to the function
             return func.call(env, inputs);
         }
     }
@@ -492,6 +502,7 @@ class Str extends ASTNode implements Printable {
 }
 
 class Print extends ASTNode {
+    // list of expressions/strings to print
     ArrayList<Printable> children = new ArrayList<Printable>();
 
     void add(Printable child) {
@@ -504,8 +515,10 @@ class Print extends ASTNode {
         for (Printable child : children)
         {   
             try {
+                // visit each argument without printing
                 Object result = child.visit(env, false);
                 if (result instanceof String) {
+                    /* replacing '\n' with the actual newline */
                     result = ((String) (result)).replace("\\n", "\n");
                 }
                 System.out.print(result);
@@ -527,6 +540,7 @@ class Print extends ASTNode {
     }
 }
 
+/* a block is simply a collection of statements, wrapped in { } */
 class Block extends ASTNode {
 
     void add(ASTNode child) {
@@ -535,6 +549,7 @@ class Block extends ASTNode {
     }
 
     Object visit(Env env) throws KeywordExcept{
+        // simply visit each child
         for (ASTNode child : children)
         {
             child.visit(env);
@@ -557,13 +572,14 @@ class IfElse extends ASTNode {
     }
 
     Object visit(Env env) throws KeywordExcept{
+        // evaluate the condition
         BigDecimal result = cond.visit(env);
         if (result.equals(BigDecimal.ZERO))
         {
+            //evaluate the else node (if provided)
             if (elseNode != null) {
                return this.elseNode.visit(env);
             }
-            //TODO return something sensible here?
             return BigDecimal.ZERO;
         }
         else {
@@ -593,6 +609,7 @@ class While extends ASTNode {
                 body.visit(env);
             }
             catch (BreakExcept ex) {
+                //catch a break by... breaking
                 break;
             }
             catch (ContinueExcept ex) {
@@ -621,18 +638,23 @@ class For extends ASTNode {
     }
 
     Object visit(Env env) throws KeywordExcept{
+        /* first evaluate the pre expression */
         pre.visit(env, false);
+        /* while the condition is true (not zero) */
         while ( !(cond.visit(env, false).equals(BigDecimal.ZERO)) ) {
+            /* visit the body */
             try {
                 body.visit(env);
             }
             catch (BreakExcept ex) {
+                //if a break occurs, break
                 break;
             }
             catch (ContinueExcept ex) {
                 //execution has already been halted for this iteration
                 //so we can just move on along
             }
+            /* visit the post expression */
             post.visit(env, false);
         }
         return null;
@@ -640,6 +662,7 @@ class For extends ASTNode {
 }
 
 
+/* exception classes used for the keywords */
 abstract class KeywordExcept extends Exception {
     KeywordExcept(String keyword, String place) {
         super("Error: " + keyword + " outside " + place);
@@ -662,19 +685,21 @@ class ReturnExcept extends KeywordExcept {
     }
 }
 
-
 class Break extends ASTNode {
     Object visit(Env env) throws KeywordExcept {
+        /* throw an exception to try to break */
         throw new BreakExcept();
     }
 }
 
 class Continue extends ASTNode {
     Object visit(Env env) throws KeywordExcept {
+        /* throw an exception to try to continue */
         throw new ContinueExcept();
     }
 }
 
+/* return from function */
 class Return extends ASTNode {
     ExprNode child;
     Return(ExprNode child) {
@@ -683,23 +708,28 @@ class Return extends ASTNode {
     }
 
     Object visit(Env env) throws KeywordExcept {
+        /* we start the return chain by throwing an exception */
         throw new ReturnExcept(child.visit(env));
     }
 }
 
-
+/* terminate the program */
 class Halt extends ASTNode {
     Object visit(Env env) {
-        // TODO: possibly exit more gracefully?
         System.exit(0);
         return null;
     }
 }
 
+/* function for storing and calling */
 class ASTFunc {
+    //name of function
     String name;
+    //names of arguments
     ArrayList<String> args;
+    //function body (a statement / block)
     ASTNode body;
+
     ASTFunc(String name, ArrayList<String> args, ASTNode body) {
         this.name = name;
         this.args = args;
@@ -707,25 +737,32 @@ class ASTFunc {
     }
 
     public BigDecimal call(Env env, ArrayList<BigDecimal> input_args) {
+        /* check that the provided args has the same count as the saved list */
         if (input_args.size() != args.size() ) {
+            // exit if the args don't 
             System.err.println("Function received " + input_args.size() + " args, expected " + args.size());
             System.exit(-1);
         }
-        // push new map onto the Environment stack
+        // push new scope onto the Environment stack
         env.push();
+        /* push each provided arg onto the new stack */
         for (int i = 0; i < args.size(); i++ ) {
             String name = args.get(i);
             BigDecimal value = input_args.get(i);
             env.locals().put(name, value);
         }
+        // setting retval to zero (if no return occurs)
         BigDecimal retval = BigDecimal.ZERO;
         try {
+            // visit the body
             this.body.visit(env);
         }
         catch (ReturnExcept ex) {
+            // if a return occurs, we grab it
             retval = ex.retval;
         }
         catch (KeywordExcept ex) {
+            // all other keywords that reach this level are considered errors
             System.err.println(ex.getMessage());
             System.exit(-1);
         }
@@ -736,6 +773,8 @@ class ASTFunc {
     }
 }
 
+/* quick and dirty classes to support built-in functions */
+/* square root */
 class Sqrt extends ASTFunc {
     Sqrt() {
         super("sqrt", null, null);
@@ -750,6 +789,7 @@ class Sqrt extends ASTFunc {
     }
 }
 
+/* sine */
 class Sfunc extends ASTFunc {
     Sfunc() {
         super("s", null, null);
@@ -764,6 +804,7 @@ class Sfunc extends ASTFunc {
     }
 }
 
+/* cosine */
 class Cfunc extends ASTFunc {
     Cfunc() {
         super("c", null, null);
@@ -777,6 +818,8 @@ class Cfunc extends ASTFunc {
          return new BigDecimal(Math.cos(input_args.get(0).doubleValue()));
     }
 }
+
+/* log */
 class Lfunc extends ASTFunc {
     Lfunc() {
         super("l", null, null);
@@ -791,6 +834,7 @@ class Lfunc extends ASTFunc {
     }
 }
 
+/* exp */
 class Efunc extends ASTFunc {
     Efunc() {
         super("e", null, null);
@@ -805,12 +849,21 @@ class Efunc extends ASTFunc {
     }
 }
 
+/* The environment represents the available scopes and functions */
 class Env {
+    //special variable scale (see README.md)
+    int scale = 20;
+    
+    // stack of scopes 
     ArrayList<HashMap<String, BigDecimal>> stack = new ArrayList<HashMap<String, BigDecimal>>();
     
+    // function dictionary
     HashMap<String, ASTFunc> functions = new HashMap<String, ASTFunc>();
+
     Env() {
+        /* upon creation, add the global scope */
         this.push();
+        /* put builtin functions into the dictionary */
         putFunc(new Sqrt());
         putFunc(new Sfunc());
         putFunc(new Cfunc());
@@ -818,23 +871,28 @@ class Env {
         putFunc(new Efunc());
     }
 
+    /* return the locals (topmost layer of the stack) */
     HashMap<String, BigDecimal> locals() {
         return stack.get(stack.size()-1);
     }
 
+    /* return the globals (topmost layer of the stack) */
     HashMap<String, BigDecimal> globals() {
         return stack.get(0);
     }
 
+    /* remove a scope */
     void pop() {
         stack.remove(stack.size()-1);
 
     }
 
+    /* create a new scope */
     void push() {
         stack.add(new HashMap<String, BigDecimal>());
     }
 
+    /* variable assignment and retrieval */
     boolean hasVar(String id) {
         if (locals().containsKey(id)) {
             return true;
@@ -843,18 +901,31 @@ class Env {
     }
 
     BigDecimal getVar(String id) {
+        // special case for variable scale
+        if (id.equals("scale")) {
+            return new BigDecimal(scale);
+        }
+        // check locals first
         if (locals().containsKey(id)) {
             return locals().get(id);
         }
         if (globals().containsKey(id)) {
             return globals().get(id);
         }
+        // if value wasn't found, create it and put it in locals
         locals().put(id, BigDecimal.ZERO);
         return BigDecimal.ZERO;
     }
-
     void putVar(String id, BigDecimal value)
     {
+        /* special case for special variable 'scale' */
+        if (id.equals("scale")) {
+            if (value.compareTo(BigDecimal.ZERO) == -1) {
+                System.out.println("Cannot set scale to negative value");
+                System.exit(-1);
+            }
+            scale = value.intValue();
+        }
         //check if it's a local variable first
         if (locals().containsKey(id)) {
            locals().put(id, value);
@@ -865,14 +936,13 @@ class Env {
         }
     }
 
+    /* function definition and retrieval */
     boolean hasFunc(String name) {
         return functions.containsKey(name);
     }
-
     void putFunc(ASTFunc func) {
         functions.put(func.name, func);
     }
-
     ASTFunc getFunc(String name) {
         return functions.get(name);
     }
@@ -880,28 +950,42 @@ class Env {
 
 }
 
+/* topmost rule - parses a list of statements / function definitions*/
 file: 
+    /* create a root node and environment */
     { Root root = new Root(); Env env = new Env(); }
-    ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )* ( st=statement { root.add($st.an); } | def=define {  env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )+ ( ndef=define { env.putFunc($ndef.f); } | nxt=statement { root.add($nxt.an);} | EOF ))* EOF?
+    ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )* 
+    /* handle the first statement */
+    ( st=statement { root.add($st.an); } | def=define {  env.putFunc($def.f); })  
+    ( ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )+ 
+      /* handle all subsequent statements */
+      ( ndef=define { env.putFunc($ndef.f); } | nxt=statement { root.add($nxt.an);} | EOF ))* EOF? 
+    /* print the AST and evaluate it */
     {  System.err.println(root); root.visit(env); }
     ;
 
+/* definitions are a 'define' keyword, an arglist, and a block */
 define returns [ASTFunc f]:
     'define' name=ID args=arglist ENDLINE? bl=block 
-    { $f = new ASTFunc($name.text, $args.args, $bl.bl); } 
+    { $f = new ASTFunc($name.text, $args.args, $bl.bl); } /* build the AST function */
     ; 
 
+/* an arglist is a list of comma separated identifiers */
 arglist returns [ArrayList<String> args]:
      { ArrayList<String> lst = new ArrayList<String>(); $args = lst;}
     '(' (first=ID {lst.add($first.text);} (',' next=ID { lst.add($next.text); })* )? ')'
     ;
 
+/* a statement is either an expression, a keyword, a string, or a block */
 statement returns [ASTNode an]:
       e=expr   { $an= new Expr($e.en);} 
     | s=STRING { $an= new Str($s.text);}
-    | 'print' { Print p = new Print(); $an = p; } fp=printable { p.add($fp.pn); } ( COMMA np=printable {p.add($np.pn);})*
+    | 'print' { Print p = new Print(); $an = p; } 
+               fp=printable { p.add($fp.pn); } 
+               ( COMMA np=printable {p.add($np.pn);})*
     | bl=block { $an = $bl.bl; }
-    | 'if' '(' con=expr ')'  ENDLINE? ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;} ('else' elses=statement { ie.addElse($elses.an);} )? {}
+    | 'if' '(' con=expr ')'  ENDLINE? ifs=statement {IfElse ie = new IfElse($con.en, $ifs.an); $an = ie;}
+      ('else' elses=statement { ie.addElse($elses.an);} )? {}
     | 'while' '(' cond=expr ')' ENDLINE? stat=statement { $an = new While($cond.en, $stat.an); }
     | 'for' '(' pre=expr SEMI cond=expr SEMI post=expr ')' ENDLINE? stat=statement{ $an = new For($pre.en, $cond.en, $post.en, $stat.an); }
     | 'break'    { $an = new Break(); }
@@ -911,20 +995,19 @@ statement returns [ASTNode an]:
     | 'return'   { ExprNode value = new Const(BigDecimal.ZERO); } ( value=expr {value = $value.en;})? { $an = new Return(value) ;} /* if no value is provided, return 0 */
     ;
 
+/* a block is a list of statements inside { } */
 block returns [Block bl]:
     { Block b = new Block(); $bl = b; } 
     '{' (SEMI | ENDLINE | SEMI ENDLINE )* ( fs=statement { b.add($fs.an); }  ((SEMI | ENDLINE | SEMI ENDLINE )* ns=statement {b.add($ns.an);}) *)? (SEMI | ENDLINE | SEMI ENDLINE )* '}' 
     ;
 
+/* printables can be either expressions or strings */
 printable returns [Printable pn]:
       e=expr { $pn = new Expr($e.en); }
     | s=STRING { $pn = new Str($s.text); }
     ;
 
-testExpr:
-     e=expr {  Env env = new Env(); System.out.println($e.en); System.out.println($e.en.visit(env));}
-    ;
-
+/* all expressions */
 expr returns [ExprNode en]:
       op='++' ID { $en = new PreInc($ID.text); }
     | op='--' ID { $en = new PreDec($ID.text); }
@@ -953,6 +1036,7 @@ expr returns [ExprNode en]:
     | '(' e=expr ')' { $en = $e.en; } 
     ;
 
+/* function calling (where args may be a list of expressions) */
 func returns [ExprNode en] :
     ID '(' { ArrayList<ExprNode> args = new ArrayList<ExprNode>(); $en = new Func($ID.text, args);} (arg=expr  {args.add($arg.en); } (',' next=expr {args.add($next.en); })*)? ')'
     ;
