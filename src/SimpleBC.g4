@@ -31,7 +31,7 @@ class Root extends ASTNode{
     void add(ASTNode an) {
         //TODO: remove this later
         if (an != null) {
-            //System.err.println("Adding: " + an);
+            System.err.println("Adding: " + an);
             children.add(an);
         }
     }
@@ -242,7 +242,7 @@ class Assign extends ExprNode {
     }
     BigDecimal visit(Env env) {
         BigDecimal value = child.visit(env);
-        env.locals().put(id, value);
+        env.putVar(id, value);
         return value;
     }
     public String toString() {
@@ -404,13 +404,7 @@ class Var extends ExprNode {
     }
 
     BigDecimal visit(Env env) {
-        if (env.locals().containsKey(id)) {
-            return env.locals().get(id);
-        }
-        else {
-            env.locals().put(id, BigDecimal.ZERO);
-            return BigDecimal.ZERO;
-        }
+        return env.getVar(id);
     }
 
     public String toString() {
@@ -834,10 +828,15 @@ class Env {
 
     void pop() {
         stack.remove(stack.size()-1);
+        System.err.print("after pop: ");
+        System.err.println(stack);
+
     }
 
     void push() {
         stack.add(new HashMap<String, BigDecimal>());
+        System.err.print("after push: ");
+        System.err.println(stack);
     }
 
     boolean hasVar(String id) {
@@ -848,6 +847,8 @@ class Env {
     }
 
     BigDecimal getVar(String id) {
+        System.err.print("getting var: ");
+        System.err.println(stack);
         if (locals().containsKey(id)) {
             return locals().get(id);
         }
@@ -862,12 +863,16 @@ class Env {
     {
         //check if it's a local variable first
         if (locals().containsKey(id)) {
+            System.err.println("in locals");
            locals().put(id, value);
         }
-        //other
+        //otherwise, we put it in globals
         else {
+            System.err.println("in globals");
             globals().put(id, value);
         }
+        System.err.print("putting var: ");
+        System.err.println(stack);
     }
 
     boolean hasFunc(String name) {
@@ -887,12 +892,12 @@ class Env {
 
 file: 
     { Root root = new Root(); Env env = new Env(); }
-    ( st=statement { root.add($st.an); } | def=define { env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )+ ( nxt=statement { root.add($nxt.an);} | define { env.putFunc($def.f);} | EOF ))* EOF?
+    ( st=statement { root.add($st.an); } | def=define {  env.putFunc($def.f); }) ( ( SEMI | ENDLINE | SEMI ENDLINE | P_COMMENT )+ ( ndef=define { env.putFunc($ndef.f); } | nxt=statement { root.add($nxt.an);} | EOF ))* EOF?
     {  System.err.println(root); root.visit(env); }
     ;
 
 define returns [ASTFunc f]:
-    'define' name=ID  args=arglist ENDLINE? bl=block 
+    'define' name=ID args=arglist ENDLINE? bl=block 
     { $f = new ASTFunc($name.text, $args.args, $bl.bl); } 
     ; 
 
@@ -968,7 +973,7 @@ FLOAT: [0-9]*[.]?[0-9]+;
 STRING: ["].*?["]; /* lazy definition of string */
 WS : [ \t]+ -> skip ;
 C_COMMENT: [/][*](.)*?[*][/] -> skip;
-P_COMMENT: '#' (.)*? ENDLINE -> skip;
+P_COMMENT: '#' (.)*? ENDLINE;
 ENDLINE: '\r'?'\n';
 SEMI: ';';
 COMMA: ',';

@@ -66,7 +66,7 @@ The **Float-diff** test is used because our simple-bc formerly stores numbers as
 
 The **Round-diff** test is used becaues some of Java's math functions (e.g. sine) does not have the same accuracy as bc -l. By rounding, we can show that these actual and expected values are more or less the same.
 
-Ideally, a test will pass at all three levels. However, in practice, most tests have floating point issues. Extremely large numbers cannot be adequately represented in the Java double format, and these may cause a test to fail at all levels.
+Ideally, a test will pass at all three levels. However, in practice, most tests have floating point issues. Extremely large numbers cannot be adequately represented in the Java double format, and these may cause a test to fail at all levels. Occasionally, the **Float-diff** and **Round-diff** tests are aborted due to encountering strings. 
 
 When a testcase is run, a folder is generated with the same name (without the -input.bc suffix.)
 This folder contains the following:
@@ -83,9 +83,69 @@ Files currently not automatically tested (need user input): `read-function.bc`, 
 Also, the `scratchpad.bc` is configured to be the automatic test file for the VSCode debugger (press "F5").
 
 ## Features
+
+### Scoping
+Scoping is intended to be accurate to bc, which only applies a sense of scope to functions.
+Consider the following from [test/scope-input.bc](test/scope-input.bc).
+```
+a = 100
+{
+    a
+    a = a + 1
+    b = 42
+}
+a
+b
+```
+The output from `bc` is:
+```
+100
+101
+42
+```
+Indicating that:
+- Both a and b were stored in the global scope
+- a was not "shadowed" in the inner block, as it was modified in the outer block.
+
+`bc`'s scoping rules mainly involve functions.
+From [func-scope-input.bc](func-scope-input.bc):
+```
+define range(x, y) {
+    global = 0 /* oops */
+    local = 777
+    # setting locals has no effect
+    y = y - x 
+    x = 0
+    return y
+}
+
+global = 42
+x = 7
+y = 999
+range(4, 4)
+
+/* test each variable*/
+global
+local
+x
+y
+```
+Results:
+```
+0
+0
+777
+7
+999
+```
+Conclusions:
+- globals can be modified inside of function blocks
+- variables created inside function calls are not saved
+- arguments that shadow the names of global variables do not affect the global functions
+
+`SimpleBC` follows these same rules.
+
 The 'pseudostatements' outlined [here](https://www.gnu.org/software/bc/manual/html_mono/bc.html#TOC16) were omitted.
-Though 'quit' seems useful, it only makes sense in interactive mode.
-(See 'halt'.)
 
 ## License
 

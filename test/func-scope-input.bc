@@ -1,0 +1,19 @@
+define range(x, y) {
+    global = 0 /* oops */
+    local = 777
+    # setting locals has no effect
+    y = y - x 
+    x = 0
+    return y
+}
+
+global = 42
+x = 7
+y = 999
+range(4, 4)
+/* test each variable*/
+test = 0
+global
+local
+x
+y

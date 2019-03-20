@@ -1,0 +1,11 @@
+i = 0
+# skips 3
+while (i < 10) {
+    i = i + 2
+    if (i == 3) { 
+        continue; 
+    }
+    elif (i > 6) {
+        break;
+    }
+}
