@@ -1,5 +1,5 @@
 # Simple BC
-## *Now with arbitrary precision*
+## *Now with functions and control flow*
 
 A simplified version of bc (basic calculator) using ANTLR 4 for the Programming Language Concepts class
 
@@ -19,7 +19,7 @@ To compile and run a simple calculator, follow these steps
 cd src/
 antlr4 SimpleBC.g4
 javac SimpleBC*.java
-grun SimpleBC exprList -tree ../test/scratchpad.bc
+grun SimpleBC file -tree ../test/scratchpad.bc
 ```
 ### Note on Arbitrary Precision
 
@@ -140,12 +140,49 @@ Results:
 ```
 Conclusions:
 - globals can be modified inside of function blocks
-- variables created inside function calls are not saved
+- variables created inside function calls are saved to the global scope
 - arguments that shadow the names of global variables do not affect the global functions
+- arguments are not saved
 
-`SimpleBC` follows these same rules.
+While these rules are not the standard we expect from C-like languages, `SimpleBC` follows rules of `bc` deliberately.
 
-The 'pseudostatements' outlined [here](https://www.gnu.org/software/bc/manual/html_mono/bc.html#TOC16) were omitted.
+### Keywords supported
+
+`SimpleBC` supports all of the following keywords
+- `define [name] (arg1, arg2, ...) { statements }` : create a new function `[name]` with an arbitrary number of arguments. The list of statements create the body.
+- `print` : print a comma-separated list of strings or expressions. The "\n" character is convered into a newline. (Note: you can also enter raw strings as a statement. In accordance with the POSIX standards, these raw strings are not newline converted.)
+- `if (cond) [statement]` : execute [statement] if (cond) is true. You may optionally supply an `else [statement]` directly after the if statement.
+- `while (cond) [statement]` : execute [statement] while (cond) is true.
+- `for ( pre ; cond ; post) [statement]` : first evaluate the `pre` expression, then while the cond expression is true, execute [statement] followed by the `post` expression.
+- `break` : stop executing a while/for loop.
+- `continue` : jump to the next iteration of a for loop. (Note: `bc` does not support continue inside of while loops, but `SimpleBC` does.)
+- `halt` : exit the program upon evaluation.
+- `exit` : terminate the program immediately when parsed.
+- `return (value)` : return `value` from function. (If no value if provided, 0 is returned.) Only valid inside of functions.
+
+### Operators supported
+- `++`, `--` (Can be placed before or after a variable for post/pre increment/decrement)
+- `+`, `-`
+- `*`, `/`
+- `^`
+- `=` (Assignment)
+- `==`, `<=`, `>=`, `<`, `>`, `!=` (Relational operators)
+- `&&`, `||`, `!` (Logical operators)
+
+### Implementation Details
+
+As the function is parsed, an Abstract Syntax Tree is generated. 
+This Abstract Syntax Tree is then printed to stderr at the beginning of execution.
+For example, this program:
+```
+for (i = 0; (i < 10 && i != 7) ; i++) {
+2 ^ (i + 1)
+}
+```
+yields the following AST:
+```
+(Root (For (Expr (Assign i (Const 0))) (Expr (And (Lt (Var i) (Const 10)) (NotEq (Var i) (Const 7)))) (Expr (PostInc i)) (Block (Expr (Power (Const 2) (Add (Var i) (Const 1)))))))
+```
 
 ## License
 

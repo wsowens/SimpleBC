@@ -31,7 +31,7 @@ class Root extends ASTNode{
     void add(ASTNode an) {
         //TODO: remove this later
         if (an != null) {
-            System.err.println("Adding: " + an);
+            //System.err.println("Adding: " + an);
             children.add(an);
         }
     }
@@ -828,15 +828,11 @@ class Env {
 
     void pop() {
         stack.remove(stack.size()-1);
-        System.err.print("after pop: ");
-        System.err.println(stack);
 
     }
 
     void push() {
         stack.add(new HashMap<String, BigDecimal>());
-        System.err.print("after push: ");
-        System.err.println(stack);
     }
 
     boolean hasVar(String id) {
@@ -847,8 +843,6 @@ class Env {
     }
 
     BigDecimal getVar(String id) {
-        System.err.print("getting var: ");
-        System.err.println(stack);
         if (locals().containsKey(id)) {
             return locals().get(id);
         }
@@ -863,16 +857,12 @@ class Env {
     {
         //check if it's a local variable first
         if (locals().containsKey(id)) {
-            System.err.println("in locals");
            locals().put(id, value);
         }
         //otherwise, we put it in globals
         else {
-            System.err.println("in globals");
             globals().put(id, value);
         }
-        System.err.print("putting var: ");
-        System.err.println(stack);
     }
 
     boolean hasFunc(String name) {
